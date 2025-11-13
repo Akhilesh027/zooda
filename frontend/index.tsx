@@ -140,9 +140,6 @@ interface Promotion {
   updatedAt?: string;
 }
 
-// Search Interfaces
-
-// API base URL
 const API_BASE_URL = "https://api.zooda.in";
 
 // Updated API Service for Promotions
