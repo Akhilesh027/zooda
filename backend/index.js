@@ -2431,5 +2431,5 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-  console.log(`API Base URL: http://192.168.0.104:${PORT}/api`);
+  
 });
