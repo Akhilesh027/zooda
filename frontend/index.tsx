@@ -140,14 +140,14 @@ interface Promotion {
   updatedAt?: string;
 }
 
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "https://api.zooda.in";
 
 // Updated API Service for Promotions
 
 // Update the API service to handle the new response structure
 const getActivePromotions = async (): Promise<Promotion[]> => {
   try {
-    const response = await axios.get(`http://localhost:5000/api/promotion`);
+    const response = await axios.get(`https://api.zooda.in/api/promotion`);
 
     // Handle both response structures
     if (response.data.success && Array.isArray(response.data.data)) {
