@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
-const API_BASE_URL = 'https://api.zooda.in/api';
+const API_BASE_URL = 'http://localhost:5000/api';
 axios.defaults.baseURL = API_BASE_URL;
 axios.defaults.headers.common['Accept'] = 'application/json'; // Added common Accept header
 
@@ -631,28 +631,26 @@ const DashboardScreen = ({ existingBusiness, user, notify }) => {
   );
 };
 
-// --- POSTS COMPONENTS ---
-
 const PostCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
   const [formData, setFormData] = useState({
     content: '',
     scheduledFor: '',
-    filter: 'all',
+    category: '', // single category for content
   });
   const [mediaFile, setMediaFile] = useState(null);
   const [postLoading, setPostLoading] = useState(false);
 
-  // Example filters (you can customize these)
-  const filterOptions = [
-    { label: 'All', value: 'all' },
-    { label: 'Images', value: 'image' },
-    { label: 'Videos', value: 'video' },
-    { label: 'Scheduled', value: 'scheduled' },
-    { label: 'Published', value: 'published' },
+  // Example content categories
+  const categories = [
+    { label: 'Marketing', value: 'marketing' },
+    { label: 'News', value: 'news' },
+    { label: 'Promotions', value: 'promotions' },
+    { label: 'Updates', value: 'updates' },
+    { label: 'Events', value: 'events' },
   ];
 
-  const handleFilterChange = (value) => {
-    setFormData((prev) => ({ ...prev, filter: value }));
+  const handleCategorySelect = (value) => {
+    setFormData((prev) => ({ ...prev, category: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -662,8 +660,8 @@ const PostCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
     const data = new FormData();
     data.append('businessId', businessId);
     data.append('content', formData.content);
-    data.append('filter', formData.filter);
     data.append('scheduledFor', formData.scheduledFor);
+    data.append('category', formData.category);
     if (mediaFile) {
       data.append('media', mediaFile);
     }
@@ -704,24 +702,24 @@ const PostCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
             className="w-full p-3 border rounded-lg h-32 resize-none focus:ring-indigo-500 focus:border-indigo-500"
           />
 
-          {/* Filter Section */}
+          {/* Category Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Filter
+              Select Category
             </label>
             <div className="flex flex-wrap gap-2">
-              {filterOptions.map((option) => (
+              {categories.map((cat) => (
                 <button
                   type="button"
-                  key={option.value}
-                  onClick={() => handleFilterChange(option.value)}
+                  key={cat.value}
+                  onClick={() => handleCategorySelect(cat.value)}
                   className={`px-4 py-2 rounded-full border text-sm font-medium transition ${
-                    formData.filter === option.value
+                    formData.category === cat.value
                       ? 'bg-indigo-600 text-white border-indigo-600'
                       : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
                   }`}
                 >
-                  {option.label}
+                  {cat.label}
                 </button>
               ))}
             </div>
@@ -754,7 +752,7 @@ const PostCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={postLoading}
+            disabled={postLoading || !formData.category}
             className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
           >
             {postLoading ? 'Creating...' : 'Create Post'}
@@ -1158,7 +1156,7 @@ const ProductCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
           />
           <input 
             type="text" 
-            placeholder="Product Link (Optional)" 
+            placeholder="Product Link " 
             value={formData.productLink}
             onChange={(e) => setFormData({...formData, productLink: e.target.value})}
             className="w-full p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
@@ -1510,7 +1508,7 @@ const PromotionCreateForm = ({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                End Date & Time (Optional)
+                End Date & Time
               </label>
               <input
                 type="datetime-local"

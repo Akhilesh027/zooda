@@ -140,14 +140,14 @@ interface Promotion {
   updatedAt?: string;
 }
 
-const API_BASE_URL = "https://api.zooda.in";
+const API_BASE_URL = "http://localhost:5000";
 
 // Updated API Service for Promotions
 
 // Update the API service to handle the new response structure
 const getActivePromotions = async (): Promise<Promotion[]> => {
   try {
-    const response = await axios.get(`https://api.zooda.in/api/promotion`);
+    const response = await axios.get(`http://localhost:5000/api/promotion`);
 
     // Handle both response structures
     if (response.data.success && Array.isArray(response.data.data)) {
@@ -1032,43 +1032,7 @@ const UserProfilePage = ({
 
         <hr className="profile-divider" />
 
-        <section className="following-businesses-section">
-          <h2>Businesses You Follow ({followingBusinesses.length})</h2>
-          {loading ? (
-            <p className="text-center">Loading businesses...</p>
-          ) : error ? (
-            <p className="text-center text-red-500">⚠️ {error}</p>
-          ) : followingBusinesses.length === 0 ? (
-            <div className="no-following-state">
-              <span className="material-icons">trending_up</span>
-              <p>You are not following any businesses yet.</p>
-              <p>Go to the Home page to discover companies!</p>
-            </div>
-          ) : (
-            <div className="following-list">
-              {followingBusinesses.map((company) => (
-                <div
-                  key={company._id}
-                  className="following-company-card"
-                  onClick={() => onSelectCompany(company)}
-                >
-                  <img
-                    src={`${API_BASE_URL}${company.logoUrl}`}
-                    alt={company.name}
-                    className="company-logo"
-                  />
-                  <div className="company-info">
-                    <h3 className="company-name">{company.name}</h3>
-                    <p className="company-followers">
-                      {parseInt(company.followers).toLocaleString()} Followers
-                    </p>
-                  </div>
-                  <span className="material-icons">chevron_right</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+        
       </main>
     </div>
   );
@@ -1184,19 +1148,6 @@ const CompanyListItem = ({
 };
 
 // ---------------- UPDATED COMPANY LIST PAGE WITH PROMOTIONS ----------------
-const CATEGORY_MAP: Record<string, string[]> = {
-  All: ["All"],
-  ecommerce: [
-    "All",
-    "Fashion",
-    "Electronics",
-    "Groceries",
-    "Home Decor",
-    "Sports",
-  ],
-  lms: ["All", "Coding", "Design", "Business", "Language", "Technology"],
-};
-
 interface CompanyListPageProps {
   onSelectCompany: (company: Company) => void;
   user?: User;
@@ -1212,6 +1163,8 @@ const CompanyListPage = ({
 }: CompanyListPageProps) => {
   const [allCompanies, setAllCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [subcategories, setSubcategories] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<"All Businesses" | "Top Ranked">(
     "All Businesses"
   );
@@ -1221,6 +1174,64 @@ const CompanyListPage = ({
   const [currentPopupPromotion, setCurrentPopupPromotion] =
     useState<Promotion | null>(null);
   const [usedPromotions, setUsedPromotions] = useState<string[]>([]);
+
+  // ✅ Fetch categories from backend
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/admin/categories`);
+      const data = await response.json();
+      
+      if (Array.isArray(data)) {
+        // Extract category names from the response
+        const categoryNames = data.map((cat: any) => cat.name);
+        setCategories(["All", ...categoryNames]);
+      } else if (data.success && Array.isArray(data.categories)) {
+        const categoryNames = data.categories.map((cat: any) => cat.name);
+        setCategories(["All", ...categoryNames]);
+      } else {
+        // Fallback to default categories if API fails
+        setCategories(["All", "Ecommerce", "LMS", "Technology", "Food", "Fashion"]);
+      }
+    } catch (err) {
+      console.error("Error fetching categories:", err);
+      // Fallback to default categories
+      setCategories(["All", "Ecommerce", "LMS", "Technology", "Food", "Fashion"]);
+    }
+  };
+
+  // ✅ Fetch subcategories based on selected category
+  const fetchSubcategories = async (category: string) => {
+    if (category === "All") {
+      setSubcategories(["All"]);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/admin/categories`);
+      const data = await response.json();
+      
+      let categoriesData: any[] = [];
+      if (Array.isArray(data)) {
+        categoriesData = data;
+      } else if (data.success && Array.isArray(data.categories)) {
+        categoriesData = data.categories;
+      }
+
+      // Find the selected category and get its subcategories
+      const selectedCat = categoriesData.find((cat: any) => cat.name === category);
+      
+      if (selectedCat && Array.isArray(selectedCat.subcategories)) {
+        const subcategoryNames = selectedCat.subcategories.map((sub: any) => sub.name);
+        setSubcategories(["All", ...subcategoryNames]);
+      } else {
+        // If no subcategories found, use default ones
+        setSubcategories(["All", "General"]);
+      }
+    } catch (err) {
+      console.error("Error fetching subcategories:", err);
+      setSubcategories(["All", "General"]);
+    }
+  };
 
   // ✅ Filter active promotions based on displayType
   const bannerPromotions = allPromotions.filter((promo) => {
@@ -1246,6 +1257,16 @@ const CompanyListPage = ({
       }, 2000);
     }
   }, [popupPromotions.length, showPromotionPopup]);
+
+  // ✅ Fetch categories on component mount
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  // ✅ Fetch subcategories when category changes
+  useEffect(() => {
+    fetchSubcategories(selectedCategory);
+  }, [selectedCategory]);
 
   // ✅ Fetch all businesses once (no category filter)
   useEffect(() => {
@@ -1390,8 +1411,6 @@ const CompanyListPage = ({
     return content;
   }, [filteredCompanies, bannerPromotions]);
 
-  const subcategoriesForSelected = CATEGORY_MAP[selectedCategory] || ["All"];
-
   const handleClosePopup = () => {
     setShowPromotionPopup(false);
     setCurrentPopupPromotion(null);
@@ -1402,6 +1421,12 @@ const CompanyListPage = ({
       onClaimOffer(currentPopupPromotion);
       handleClosePopup();
     }
+  };
+
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newCategory = e.target.value;
+    setSelectedCategory(newCategory);
+    setSelectedSubcategory("All"); // Reset subcategory when category changes
   };
 
   if (loading)
@@ -1430,30 +1455,43 @@ const CompanyListPage = ({
       {/* Filters */}
       <div className="filters flex gap-4 p-4 items-center">
         <div>
+          <label htmlFor="category-select" className="filter-label">
+            Category:
+          </label>
           <select
+            id="category-select"
             value={selectedCategory}
-            onChange={(e) => {
-              setSelectedCategory(e.target.value);
-              setSelectedSubcategory("All");
-            }}
+            onChange={handleCategoryChange}
+            className="filter-select"
           >
-            {Object.keys(CATEGORY_MAP).map((cat) => (
-              <option key={cat}>{cat}</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
             ))}
           </select>
         </div>
 
-        {/* Subcategory dropdown (optional) */}
-        {/* <div>
-          <select
-            value={selectedSubcategory}
-            onChange={(e) => setSelectedSubcategory(e.target.value)}
-          >
-            {subcategoriesForSelected.map((sub) => (
-              <option key={sub}>{sub}</option>
-            ))}
-          </select>
-        </div> */}
+        {/* Subcategory dropdown */}
+        {subcategories.length > 1 && (
+          <div>
+            <label htmlFor="subcategory-select" className="filter-label">
+              Subcategory:
+            </label>
+            <select
+              id="subcategory-select"
+              value={selectedSubcategory}
+              onChange={(e) => setSelectedSubcategory(e.target.value)}
+              className="filter-select"
+            >
+              {subcategories.map((sub) => (
+                <option key={sub} value={sub}>
+                  {sub}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Company List + Banners */}
@@ -1655,12 +1693,12 @@ const AboutPage = () => {
   return (
     <main className="about-page">
       <div className="about-container">
-        <h1 className="about-title">About Zetova</h1>
+        <h1 className="about-title">About Zooda</h1>
         <div className="about-content">
           <section className="about-section">
             <h2>Our Mission</h2>
             <p>
-              Zetova connects businesses with their audience through powerful
+              Zooda connects businesses with their audience through powerful
               social media insights and engagement tools. We help companies
               showcase their products, share their stories, and build meaningful
               connections with their customers.
@@ -1697,7 +1735,7 @@ const AboutPage = () => {
             <h2>Join Our Community</h2>
             <p>
               Whether you're a business looking to grow your presence or a
-              customer wanting to discover new brands, Zetova provides the
+              customer wanting to discover new brands, Zooda provides the
               platform to connect, engage, and grow together.
             </p>
           </section>
@@ -1706,6 +1744,7 @@ const AboutPage = () => {
     </main>
   );
 };
+
 
 // ---------------- ALL POSTS PAGE ----------------
 interface AllPostsPageProps {
@@ -2317,21 +2356,259 @@ const PostDetailPage = ({ data, onBack, user }: PostDetailPageProps) => (
     </main>
   </div>
 );
+// ---------------- FOOTER COMPONENT ----------------
+interface FooterProps {
+  activePage: string;
+  onNavClick: (page: string) => void;
+  user?: User | null;
+}
 
+const Footer = ({ activePage, onNavClick, user }: FooterProps) => {
+  return (
+    <footer className="app-footer">
+      <div className="footer-content">
+        {/* Logo and Brand */}
+        <div className="footer-brand">
+          <div className="footer-logo">
+            <span className="material-icons">hub</span>
+            <span className="logo-text">Zetova</span>
+          </div>
+        </div>
+
+        {/* Navigation Links */}
+        <div className="footer-links">
+          <a 
+            href="#" 
+            className={`footer-link ${activePage === "Home" ? "active" : ""}`}
+            onClick={(e) => {
+              e.preventDefault();
+              onNavClick("Home");
+            }}
+          >
+            Home
+          </a>
+          <a 
+            href="#" 
+            className={`footer-link ${activePage === "About" ? "active" : ""}`}
+            onClick={(e) => {
+              e.preventDefault();
+              onNavClick("About");
+            }}
+          >
+            About Us
+          </a>
+          <a 
+            href="#" 
+            className={`footer-link ${activePage === "Posts" ? "active" : ""}`}
+            onClick={(e) => {
+              e.preventDefault();
+              onNavClick("Posts");
+            }}
+          >
+            Posts
+          </a>
+          {user && (
+            <a 
+              href="#" 
+              className={`footer-link ${activePage === "Profile" ? "active" : ""}`}
+              onClick={(e) => {
+                e.preventDefault();
+                onNavClick("Profile");
+              }}
+            >
+              Profile
+            </a>
+          )}
+        </div>
+
+        {/* Business Registration Link */}
+        <div className="footer-business">
+          <a 
+            href="https://client.zooda.in" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="business-registration-link"
+          >
+            Business Registration
+          </a>
+        </div>
+      </div>
+    </footer>
+  );
+};
+
+// Add the Footer CSS styles
+const footerStyles = `
+.app-footer {
+  background: #000;
+  border-top: 1px solid #222;
+  padding: 1.5rem 1rem;
+  margin-top: auto;
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.footer-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.footer-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+
+.footer-logo .material-icons {
+  font-size: 1.5rem;
+  color: #00ff99;
+}
+
+.logo-text {
+  background: linear-gradient(135deg, #00ff99, #00ccff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+}
+
+.footer-links {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.footer-link {
+  color: #ccc;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.2s ease;
+  padding: 0.5rem 0;
+}
+
+.footer-link:hover {
+  color: #00ff99;
+}
+
+.footer-link.active {
+  color: #00ff99;
+  font-weight: 600;
+}
+
+.footer-business {
+  margin-top: 0.5rem;
+}
+
+.business-registration-link {
+  color: #00ccff;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border: 1px solid #00ccff;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.business-registration-link:hover {
+  background: #00ccff;
+  color: #000;
+}
+
+/* Responsive Design */
+@media (min-width: 768px) {
+  .footer-content {
+    flex-direction: row;
+    justify-content: space-between;
+    text-align: left;
+  }
+  
+  .footer-links {
+    gap: 2rem;
+  }
+  
+  .footer-business {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-footer {
+    padding: 1rem 0.5rem;
+  }
+  
+  .footer-links {
+    gap: 1rem;
+  }
+  
+  .footer-link {
+    font-size: 0.85rem;
+  }
+  
+  .business-registration-link {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.8rem;
+  }
+}
+`;
+
+// Add footer styles to document
+if (typeof document !== "undefined") {
+  const footerStyleSheet = document.createElement("style");
+  footerStyleSheet.textContent = footerStyles;
+  document.head.appendChild(footerStyleSheet);
+}
+// ---------------- LOGIN MODAL ----------------
 // ---------------- LOGIN MODAL ----------------
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLogin: (user: User) => void;
+  onOpenRegister: () => void;
 }
 
-const LoginModal = ({ isOpen, onClose, onLogin }: LoginModalProps) => {
+const LoginModal = ({ isOpen, onClose, onLogin, onOpenRegister }: LoginModalProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const [forgotStep, setForgotStep] = useState<"email" | "reset" | null>(null);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      setEmail("");
+      setPassword("");
+      setError("");
+      setForgotStep(null);
+      setForgotEmail("");
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+  }, [isOpen]);
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
+
     try {
       const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
         email,
@@ -2360,7 +2637,79 @@ const LoginModal = ({ isOpen, onClose, onLogin }: LoginModalProps) => {
       setError(
         err.response?.data?.message || "Login failed. Please try again."
       );
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleForgotEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    
+    try {
+      const res = await axios.post(`${API_BASE_URL}/api/auth/check-email`, { 
+        email: forgotEmail 
+      });
+      
+      if (res.data.exists) {
+        setForgotStep("reset");
+        setError("");
+      } else {
+        setError("Email not found. Please check your email address.");
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Error checking email. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      setError("Password must be at least 6 characters long");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await axios.post(`${API_BASE_URL}/api/auth/reset-password`, {
+        email: forgotEmail,
+        newPassword,
+      });
+      
+      setError("");
+      alert("Password updated successfully. Please login with your new password.");
+      setForgotStep(null);
+      setForgotEmail("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to reset password. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBackToLogin = () => {
+    setForgotStep(null);
+    setForgotEmail("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setError("");
+  };
+
+  const handleSwitchToRegister = () => {
+    onClose();
+    onOpenRegister();
   };
 
   if (!isOpen) return null;
@@ -2369,35 +2718,175 @@ const LoginModal = ({ isOpen, onClose, onLogin }: LoginModalProps) => {
     <div className="modal-overlay">
       <div className="modal-content">
         <div className="modal-header">
-          <h3>Login</h3>
+          <h3>
+            {forgotStep 
+              ? (forgotStep === "email" ? "Forgot Password" : "Reset Password") 
+              : "Login"
+            }
+          </h3>
           <button onClick={onClose} className="modal-close">
             <span className="material-icons">close</span>
           </button>
         </div>
-        {error && <p className="text-red-500 mb-2">{error}</p>}
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+
+        {error && (
+          <div className="error-message">
+            {error}
           </div>
-          <div className="form-group">
-            <label>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-          <button type="submit" className="btn btn-solid">
-            Login
-          </button>
-        </form>
+        )}
+
+        {!forgotStep ? (
+          // LOGIN FORM
+          <>
+            <form onSubmit={handleLoginSubmit} className="modal-form">
+              <div className="form-group">
+                <label htmlFor="login-email">Email</label>
+                <input
+                  id="login-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={loading}
+                  placeholder="Enter your email"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="login-password">Password</label>
+                <input
+                  id="login-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  placeholder="Enter your password"
+                />
+              </div>
+              
+              <button 
+                type="submit" 
+                className="btn btn-solid login-btn"
+                disabled={loading}
+              >
+                {loading ? "Logging in..." : "Login"}
+              </button>
+            </form>
+            
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="footer-link"
+                onClick={() => setForgotStep("email")}
+                disabled={loading}
+              >
+                Forgot Password?
+              </button>
+              
+              <div className="register-section">
+                <span>Don't have an account? </span>
+                <button
+                  type="button"
+                  className="footer-link register-link"
+                  onClick={handleSwitchToRegister}
+                  disabled={loading}
+                >
+                  Register here
+                </button>
+              </div>
+            </div>
+          </>
+        ) : forgotStep === "email" ? (
+          // FORGOT PASSWORD - EMAIL STEP
+          <>
+            <form onSubmit={handleForgotEmailSubmit} className="modal-form">
+              <div className="form-group">
+                <label htmlFor="forgot-email">Enter your email</label>
+                <input
+                  id="forgot-email"
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  required
+                  disabled={loading}
+                  placeholder="Enter your registered email"
+                />
+              </div>
+              
+              <div className="forgot-password-buttons">
+                <button 
+                  type="submit" 
+                  className="btn btn-solid"
+                  disabled={loading}
+                >
+                  {loading ? "Checking..." : "Next"}
+                </button>
+                
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={handleBackToLogin}
+                  disabled={loading}
+                >
+                  Back to Login
+                </button>
+              </div>
+            </form>
+          </>
+        ) : (
+          // FORGOT PASSWORD - RESET STEP
+          <>
+            <form onSubmit={handleResetPasswordSubmit} className="modal-form">
+              <div className="form-group">
+                <label htmlFor="new-password">New Password</label>
+                <input
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  placeholder="Enter new password"
+                  minLength={6}
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="confirm-password">Confirm Password</label>
+                <input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  placeholder="Confirm new password"
+                  minLength={6}
+                />
+              </div>
+              
+              <div className="forgot-password-buttons">
+                <button 
+                  type="submit" 
+                  className="btn btn-solid"
+                  disabled={loading}
+                >
+                  {loading ? "Updating..." : "Update Password"}
+                </button>
+                
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={handleBackToLogin}
+                  disabled={loading}
+                >
+                  Back to Login
+                </button>
+              </div>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );
@@ -2408,23 +2897,60 @@ interface RegisterModalProps {
   isOpen: boolean;
   onClose: () => void;
   onRegister: (user: User) => void;
+  onOpenLogin: () => void;
 }
 
-const RegisterModal = ({ isOpen, onClose, onRegister }: RegisterModalProps) => {
+const RegisterModal = ({ isOpen, onClose, onRegister, onOpenLogin }: RegisterModalProps) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [interests, setInterests] = useState<string[]>([]);
   const [error, setError] = useState("");
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [registerLoading, setRegisterLoading] = useState(false);
 
-  const availableInterests = {
-    "E-commerce": ["Fashion", "Electronics", "Groceries", "Sports", "Beauty"],
-    LMS: ["Programming", "Design", "Marketing", "Business", "Languages"],
+  // Reset form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setName("");
+      setEmail("");
+      setPassword("");
+      setInterests([]);
+      setError("");
+      fetchCategories();
+    }
+  }, [isOpen]);
+
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_BASE_URL}/api/admin/categories`);
+      setCategories(response.data);
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+      setError('Failed to load categories');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    
+    // Validation
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long");
+      return;
+    }
+    
+    if (interests.length === 0) {
+      setError("Please select at least one interest");
+      return;
+    }
+
+    setRegisterLoading(true);
 
     try {
       const response = await axios.post(`${API_BASE_URL}/api/auth/register`, {
@@ -2438,8 +2964,7 @@ const RegisterModal = ({ isOpen, onClose, onRegister }: RegisterModalProps) => {
         throw new Error(response.data.message);
       }
 
-      const userData =
-        response.data.user || response.data.data || response.data;
+      const userData = response.data.user || response.data.data || response.data;
 
       const userToStore = {
         _id: userData._id,
@@ -2450,97 +2975,182 @@ const RegisterModal = ({ isOpen, onClose, onRegister }: RegisterModalProps) => {
 
       localStorage.setItem("recentRegisteredUser", JSON.stringify(userToStore));
       onRegister(userToStore);
+      
+      // Clear form
       setName("");
       setEmail("");
       setPassword("");
       setInterests([]);
       setError("");
+      
+      // Close register modal and open login modal
       onClose();
+      setTimeout(() => {
+        onOpenLogin();
+      }, 300);
+      
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
           err.message ||
           "Registration failed. Please try again."
       );
+    } finally {
+      setRegisterLoading(false);
     }
+  };
+
+  const toggleInterest = (itemName: string) => {
+    if (interests.includes(itemName)) {
+      setInterests(interests.filter((i) => i !== itemName));
+    } else {
+      setInterests([...interests, itemName]);
+    }
+  };
+
+  const handleSwitchToLogin = () => {
+    onClose();
+    onOpenLogin();
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content">
+      <div className="modal-content register-modal">
         <div className="modal-header">
-          <h3>Register</h3>
+          <h3>Create Account</h3>
           <button onClick={onClose} className="modal-close">
             <span className="material-icons">close</span>
           </button>
         </div>
 
-        {error && <p className="text-red-500 mb-2">{error}</p>}
+        {error && (
+          <div className="error-message">
+            {error}
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
-            <label>Full Name</label>
+            <label htmlFor="register-name">Full Name</label>
             <input
+              id="register-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+              disabled={registerLoading}
+              placeholder="Enter your full name"
             />
           </div>
+          
           <div className="form-group">
-            <label>Email</label>
+            <label htmlFor="register-email">Email</label>
             <input
+              id="register-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={registerLoading}
+              placeholder="Enter your email"
             />
           </div>
+          
           <div className="form-group">
-            <label>Password</label>
+            <label htmlFor="register-password">Password</label>
             <input
+              id="register-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={registerLoading}
+              placeholder="Enter password (min. 6 characters)"
+              minLength={6}
             />
           </div>
 
           <div className="form-group">
-            <label>Select Category & Subcategories</label>
-            {Object.entries(availableInterests).map(([category, subs]) => (
-              <div key={category} className="mb-3">
-                <h4 className="font-semibold mb-1">{category}</h4>
-                <div className="flex gap-2 flex-wrap">
-                  {subs.map((sub) => (
+            <label className="form-label">Select Interests</label>
+            
+            {loading ? (
+              <div className="loading-text">Loading categories...</div>
+            ) : categories.length === 0 ? (
+              <div className="no-categories-text">No categories available</div>
+            ) : (
+              <div className="categories-section">
+                {categories.map((category) => (
+                  <div key={category._id} className="category-group">
                     <button
                       type="button"
-                      key={sub}
-                      className={`tag-button ${
-                        interests.includes(sub) ? "active" : ""
+                      className={`category-btn ${
+                        interests.includes(category.name) ? "active" : ""
                       }`}
-                      onClick={() => {
-                        if (interests.includes(sub)) {
-                          setInterests(interests.filter((i) => i !== sub));
-                        } else {
-                          setInterests([...interests, sub]);
-                        }
-                      }}
+                      onClick={() => toggleInterest(category.name)}
+                      disabled={registerLoading}
                     >
-                      {sub}
+                      <span className="category-name">{category.name}</span>
+                      {category.subcategories && category.subcategories.length > 0 && (
+                        <span className="subcount-badge">
+                          {category.subcategories.length} subcategories
+                        </span>
+                      )}
                     </button>
-                  ))}
-                </div>
+
+                    {category.subcategories && category.subcategories.length > 0 && (
+                      <div className="subcategories-group">
+                        {category.subcategories.map((subcategory: any) => (
+                          <button
+                            type="button"
+                            key={subcategory._id}
+                            className={`subcategory-btn ${
+                              interests.includes(subcategory.name) ? "active" : ""
+                            }`}
+                            onClick={() => toggleInterest(subcategory.name)}
+                            disabled={registerLoading}
+                          >
+                            {subcategory.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
+            
+            {interests.length > 0 && (
+              <div className="selected-interests">
+                <strong>Selected: </strong>
+                {interests.join(", ")}
+              </div>
+            )}
           </div>
 
-          <button type="submit" className="btn btn-solid">
-            Register
+          <button 
+            type="submit" 
+            className="btn btn-solid register-btn"
+            disabled={registerLoading || loading}
+          >
+            {registerLoading ? "Creating Account..." : "Register"}
           </button>
         </form>
+        
+        <div className="modal-footer">
+          <div className="login-section">
+            <span>Already have an account? </span>
+            <button
+              type="button"
+              className="footer-link login-link"
+              onClick={handleSwitchToLogin}
+              disabled={registerLoading}
+            >
+              Login here
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -2962,6 +3572,7 @@ const App = () => {
               allPromotions={allPromotions}
               onClaimOffer={handleClaimOffer}
             />
+            
           </>
         );
     }
@@ -3032,17 +3643,25 @@ const App = () => {
 
         <div className="main-wrapper">{renderPage()}</div>
       </div>
-
-      <LoginModal
+  
+     <LoginModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
         onLogin={handleLogin}
+        onOpenRegister={() => {
+          setShowLoginModal(false);
+          setShowRegisterModal(true);
+        }}
       />
 
       <RegisterModal
         isOpen={showRegisterModal}
         onClose={() => setShowRegisterModal(false)}
         onRegister={handleRegister}
+        onOpenLogin={() => {
+          setShowRegisterModal(false);
+          setShowLoginModal(true);
+        }}
       />
     </div>
   );

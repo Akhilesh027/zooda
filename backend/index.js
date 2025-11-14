@@ -38,7 +38,7 @@ const storage = new CloudinaryStorage({
 // ✅ Multer Middleware
 const upload = multer({ storage });
 
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://192.168.0.104:27017/socialdash', {
+mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://akhileshreddy811_db_user:6MQywIJtJR8oLeCo@cluster0.t0i7d7t.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
@@ -559,7 +559,7 @@ app.post('/api/auth/register', async (req, res) => {
     await client.save();
 
     res.status(201).json({
-      message: "Client registered successfully",
+      message: "User registered successfully",
       client: {
         _id: client._id,
         name: client.name,
@@ -603,6 +603,44 @@ app.post('/api/auth/login', async (req, res) => {
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
+});
+app.post("/api/auth/check-email", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+
+    const user = await Client.findOne({ email: email.toLowerCase() });
+    if (!user) return res.status(404).json({ exists: false, message: "Email not found" });
+
+    return res.json({ exists: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// ---------------- Reset Password ----------------
+app.post("/api/auth/reset-password", async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+    if (!email || !newPassword)
+      return res.status(400).json({ message: "Email and new password are required" });
+
+    const user = await Client.findOne({ email: email.toLowerCase() });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    user.password = hashedPassword;
+    await user.save();
+
+    res.json({ success: true, message: "Password updated successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
 });
 app.get('/api/auth/profile', async (req, res) => {
   try {
@@ -2427,6 +2465,122 @@ async function updateBusinessEngagementRate(businessId) {
         totalPosts: metrics.totalPosts 
     });
 }
+const subcategorySchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  }
+});
+
+const categorySchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true
+  },
+  subcategories: [subcategorySchema]
+}, {
+  timestamps: true
+});
+const Category = mongoose.model('Category', categorySchema);
+app.get('/api/admin/categories', async (req, res) => {
+  try {
+    const categories = await Category.find().sort({ name: 1 });
+    res.json(categories);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching categories', error: error.message });
+  }
+});
+
+// Create category
+app.post('/api/admin/categories', async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ message: 'Category name is required' });
+    }
+
+    const existingCategory = await Category.findOne({ name });
+    if (existingCategory) {
+      return res.status(400).json({ message: 'Category already exists' });
+    }
+
+    const category = new Category({ name });
+    await category.save();
+    res.status(201).json(category);
+  } catch (error) {
+    res.status(500).json({ message: 'Error creating category', error: error.message });
+  }
+});
+
+// Delete category
+app.delete('/api/admin/categories/:id', async (req, res) => {
+  try {
+    const category = await Category.findById(req.params.id);
+    
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    await Category.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Category deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting category', error: error.message });
+  }
+});
+
+// Create subcategory
+app.post('/api/admin/categories/:categoryId/subcategories', async (req, res) => {
+  try {
+    const { name } = req.body;
+    const category = await Category.findById(req.params.categoryId);
+
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    if (!name) {
+      return res.status(400).json({ message: 'Subcategory name is required' });
+    }
+
+    const existingSubcategory = category.subcategories.find(
+      sub => sub.name.toLowerCase() === name.toLowerCase()
+    );
+
+    if (existingSubcategory) {
+      return res.status(400).json({ message: 'Subcategory already exists' });
+    }
+
+    category.subcategories.push({ name });
+    await category.save();
+
+    res.status(201).json(category);
+  } catch (error) {
+    res.status(500).json({ message: 'Error creating subcategory', error: error.message });
+  }
+});
+
+// Delete subcategory
+app.delete('/api/admin/categories/:categoryId/subcategories/:subcategoryId', async (req, res) => {
+  try {
+    const category = await Category.findById(req.params.categoryId);
+
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    category.subcategories.pull({ _id: req.params.subcategoryId });
+    await category.save();
+
+    res.json({ message: 'Subcategory deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting subcategory', error: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {

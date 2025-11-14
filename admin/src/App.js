@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 
 // API Configuration
-const API_BASE = 'https://api.zooda.in/api';
+const API_BASE = 'http://localhost:5000/api';
 
 // Main App Component
 function App() {
@@ -10,7 +10,8 @@ function App() {
     pendingBusinesses: [],
     approvedBusinesses: [],
     platformStats: null,
-    businessAnalytics: []
+    businessAnalytics: [],
+    categories: [] 
   });
   const [adminLoading, setAdminLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
@@ -55,38 +56,37 @@ function App() {
     }
   };
 
-  // Admin Functions
-  const loadAdminData = async () => {
-    setAdminLoading(true);
-    try {
-      // Load admin data
-      const [pendingResult, approvedResult, statsResult, analyticsResult] = await Promise.all([
-        makeAPIRequest('/admin/businesses?status=pending'),
-        makeAPIRequest('/admin/businesses?status=approved'),
-        makeAPIRequest('/admin/stats'),
-        makeAPIRequest('/admin/analytics/businesses')
-      ]);
+ const loadAdminData = async () => {
+  setAdminLoading(true);
+  try {
+    const [pendingResult, approvedResult, statsResult, analyticsResult, categoriesResult] = await Promise.all([
+      makeAPIRequest('/admin/businesses?status=pending'),
+      makeAPIRequest('/admin/businesses?status=approved'),
+      makeAPIRequest('/admin/stats'),
+      makeAPIRequest('/admin/analytics/businesses'),
+      makeAPIRequest('/admin/categories') // Load categories
+    ]);
 
-      setAdminData({
-        pendingBusinesses: pendingResult.success ? pendingResult.data : getMockPendingBusinesses(),
-        approvedBusinesses: approvedResult.success ? approvedResult.data : getMockApprovedBusinesses(),
-        platformStats: statsResult.success ? statsResult.data : getMockPlatformStats(),
-        businessAnalytics: analyticsResult.success ? analyticsResult.data : getMockBusinessAnalytics()
-      });
-    } catch (error) {
-      console.error('Error loading admin data:', error);
-      // Fallback to mock data
-      setAdminData({
-        pendingBusinesses: getMockPendingBusinesses(),
-        approvedBusinesses: getMockApprovedBusinesses(),
-        platformStats: getMockPlatformStats(),
-        businessAnalytics: getMockBusinessAnalytics()
-      });
-    } finally {
-      setAdminLoading(false);
-    }
-  };
-
+    setAdminData({
+      pendingBusinesses: pendingResult.success ? pendingResult.data : getMockPendingBusinesses(),
+      approvedBusinesses: approvedResult.success ? approvedResult.data : getMockApprovedBusinesses(),
+      platformStats: statsResult.success ? statsResult.data : getMockPlatformStats(),
+      businessAnalytics: analyticsResult.success ? analyticsResult.data : getMockBusinessAnalytics(),
+      categories: categoriesResult.success ? categoriesResult.data : getMockCategories()
+    });
+  } catch (error) {
+    console.error('Error loading admin data:', error);
+    setAdminData({
+      pendingBusinesses: getMockPendingBusinesses(),
+      approvedBusinesses: getMockApprovedBusinesses(),
+      platformStats: getMockPlatformStats(),
+      businessAnalytics: getMockBusinessAnalytics(),
+      categories: getMockCategories()
+    });
+  } finally {
+    setAdminLoading(false);
+  }
+};
   const approveBusiness = async (businessId) => {
     const result = await makeAPIRequest(`/admin/businesses/${businessId}/approve`, {
       method: 'PUT'
@@ -287,11 +287,97 @@ function App() {
       status: 'approved'
     }
   ];
+  const getMockCategories = () => [
+  {
+    _id: '1',
+    name: 'Food & Beverage',
+    subcategories: [
+      { _id: '1-1', name: 'Restaurants' },
+      { _id: '1-2', name: 'Cafes' },
+      { _id: '1-3', name: 'Food Delivery' }
+    ]
+  },
+  {
+    _id: '2',
+    name: 'Retail',
+    subcategories: [
+      { _id: '2-1', name: 'Fashion' },
+      { _id: '2-2', name: 'Electronics' }
+    ]
+  },
+  {
+    _id: '3',
+    name: 'Services',
+    subcategories: [
+      { _id: '3-1', name: 'Beauty' },
+      { _id: '3-2', name: 'Home Services' }
+    ]
+  }
+];
+const createCategory = async (categoryName) => {
+  const result = await makeAPIRequest('/admin/categories', {
+    method: 'POST',
+    body: JSON.stringify({ name: categoryName })
+  });
+  
+  if (result.success) {
+    await loadAdminData();
+    return { success: true, message: 'Category created successfully!' };
+  } else {
+    return { success: false, error: result.error };
+  }
+};
+
+const deleteCategory = async (categoryId) => {
+  const result = await makeAPIRequest(`/admin/categories/${categoryId}`, {
+    method: 'DELETE'
+  });
+  
+  if (result.success) {
+    await loadAdminData();
+    return { success: true, message: 'Category deleted successfully!' };
+  } else {
+    return { success: false, error: result.error };
+  }
+};
+
+const createSubcategory = async (categoryId, subcategoryName) => {
+  const result = await makeAPIRequest(`/admin/categories/${categoryId}/subcategories`, {
+    method: 'POST',
+    body: JSON.stringify({ name: subcategoryName })
+  });
+  
+  if (result.success) {
+    await loadAdminData();
+    return { success: true, message: 'Subcategory created successfully!' };
+  } else {
+    return { success: false, error: result.error };
+  }
+};
+
+const deleteSubcategory = async (categoryId, subcategoryId) => {
+  const result = await makeAPIRequest(`/admin/categories/${categoryId}/subcategories/${subcategoryId}`, {
+    method: 'DELETE'
+  });
+  
+  if (result.success) {
+    await loadAdminData();
+    return { success: true, message: 'Subcategory deleted successfully!' };
+  } else {
+    return { success: false, error: result.error };
+  }
+};
+
+
+// Update loadAdminData to include categories
+
 
   const adminTabs = [
     { id: 'overview', name: 'Overview', icon: 'fa-chart-bar' },
     { id: 'approvals', name: 'Business Approvals', icon: 'fa-building' },
-    { id: 'analytics', name: 'Business Analytics', icon: 'fa-chart-line' }
+    { id: 'analytics', name: 'Business Analytics', icon: 'fa-chart-line' },
+      { id: 'categories', name: 'Categories', icon: 'fa-tags' } // New tab
+
   ];
 
   const renderTabContent = () => {
@@ -332,6 +418,16 @@ function App() {
             businessAnalytics={adminData.businessAnalytics}
           />
         );
+         case 'categories':
+    return (
+      <CategoryManagementTab
+        categories={adminData.categories}
+        onCreateCategory={createCategory}
+        onDeleteCategory={deleteCategory}
+        onCreateSubcategory={createSubcategory}
+        onDeleteSubcategory={deleteSubcategory}
+      />
+    );
       default:
         return <AdminOverviewTab stats={adminData.platformStats} />;
     }
@@ -944,6 +1040,161 @@ function AdminAnalyticsTab({ businessAnalytics }) {
           <i className="fas fa-chart-line empty-icon"></i>
           <p className="empty-text">No business analytics data available</p>
           <p className="empty-subtext">Analytics data will appear here once businesses start using the platform.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+// Category Management Tab Component
+function CategoryManagementTab({
+  categories,
+  onCreateCategory,
+  onDeleteCategory,
+  onCreateSubcategory,
+  onDeleteSubcategory
+}) {
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newSubcategoryName, setNewSubcategoryName] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState(null);
+
+  const handleCreateCategory = async (e) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) return;
+
+    const result = await onCreateCategory(newCategoryName);
+    if (result.success) {
+      setNewCategoryName('');
+      alert(result.message);
+    } else {
+      alert('Error: ' + result.error);
+    }
+  };
+
+  const handleCreateSubcategory = async (e) => {
+    e.preventDefault();
+    if (!newSubcategoryName.trim() || !selectedCategory) return;
+
+    const result = await onCreateSubcategory(selectedCategory._id, newSubcategoryName);
+    if (result.success) {
+      setNewSubcategoryName('');
+      alert(result.message);
+    } else {
+      alert('Error: ' + result.error);
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId) => {
+    if (window.confirm('Are you sure you want to delete this category?')) {
+      const result = await onDeleteCategory(categoryId);
+      if (result.success) {
+        alert(result.message);
+      } else {
+        alert('Error: ' + result.error);
+      }
+    }
+  };
+
+  const handleDeleteSubcategory = async (categoryId, subcategoryId, subcategoryName) => {
+    if (window.confirm(`Are you sure you want to delete "${subcategoryName}"?`)) {
+      const result = await onDeleteSubcategory(categoryId, subcategoryId);
+      if (result.success) {
+        alert(result.message);
+      } else {
+        alert('Error: ' + result.error);
+      }
+    }
+  };
+
+  return (
+    <div className="category-management">
+      <div className="admin-section-header">
+        <h2>Category Management</h2>
+        <p>Manage categories and subcategories</p>
+      </div>
+
+      {/* Add New Category Form */}
+      <div className="category-form-section">
+        <h3>Add New Category</h3>
+        <form onSubmit={handleCreateCategory} className="category-form">
+          <input
+            type="text"
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+            placeholder="Enter category name"
+            className="category-input"
+            required
+          />
+          <button type="submit" className="button primary">
+            <i className="fas fa-plus"></i> Add Category
+          </button>
+        </form>
+      </div>
+
+      {/* Categories List */}
+      <div className="categories-list">
+        {categories.map(category => (
+          <div key={category._id} className="category-card">
+            <div className="category-header">
+              <h3 className="category-name">{category.name}</h3>
+              <div className="category-actions">
+                <button 
+                  className="action-button danger small"
+                  onClick={() => handleDeleteCategory(category._id)}
+                  title="Delete Category"
+                >
+                  <i className="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+
+            {/* Add Subcategory Form */}
+            <div className="subcategory-form">
+              <input
+                type="text"
+                value={selectedCategory?._id === category._id ? newSubcategoryName : ''}
+                onChange={(e) => {
+                  setSelectedCategory(category);
+                  setNewSubcategoryName(e.target.value);
+                }}
+                placeholder="Add subcategory"
+                className="subcategory-input"
+              />
+              <button 
+                onClick={(e) => {
+                  setSelectedCategory(category);
+                  handleCreateSubcategory(e);
+                }}
+                className="button secondary small"
+                disabled={!newSubcategoryName.trim()}
+              >
+                <i className="fas fa-plus"></i> Add
+              </button>
+            </div>
+
+            {/* Subcategories List */}
+            <div className="subcategories-list">
+              {category.subcategories && category.subcategories.map(subcategory => (
+                <div key={subcategory._id} className="subcategory-item">
+                  <span className="subcategory-name">{subcategory.name}</span>
+                  <button 
+                    className="action-icon danger small"
+                    onClick={() => handleDeleteSubcategory(category._id, subcategory._id, subcategory.name)}
+                    title="Delete Subcategory"
+                  >
+                    <i className="fas fa-times"></i>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {categories.length === 0 && (
+        <div className="empty-state">
+          <i className="fas fa-tags empty-icon"></i>
+          <p className="empty-text">No categories found</p>
+          <p className="empty-subtext">Create your first category to get started</p>
         </div>
       )}
     </div>
