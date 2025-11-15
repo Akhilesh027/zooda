@@ -173,7 +173,6 @@ const getActivePromotions = async (): Promise<Promotion[]> => {
   }
 };
 
-// Promotion tracking function
 const trackPromotionEvent = async (
   promotionId: string | undefined,
   type: string
