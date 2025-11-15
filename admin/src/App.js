@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 
 // API Configuration
-const API_BASE = 'http://192.168.0.102:5000/api';
+const API_BASE = 'https://api.zooda.in/api';
 
 // Main App Component
 function App() {

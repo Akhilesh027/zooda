@@ -140,14 +140,14 @@ interface Promotion {
   updatedAt?: string;
 }
 
-const API_BASE_URL = "http://192.168.0.102:5000";
+const API_BASE_URL = "https://api.zooda.in";
 
 // Updated API Service for Promotions
 
 // Update the API service to handle the new response structure
 const getActivePromotions = async (): Promise<Promotion[]> => {
   try {
-    const response = await axios.get(`http://192.168.0.102:5000/api/promotion`);
+    const response = await axios.get(`https://api.zooda.in/api/promotion`);
 
     // Handle both response structures
     if (response.data.success && Array.isArray(response.data.data)) {
@@ -2639,8 +2639,8 @@ const AllPostsPage = ({ onSelectPost, user }: AllPostsPageProps) => {
 
       const endpoint =
         activeTab === "Following"
-          ? `http://192.168.0.102:5000/api/posts/following/${user._id}`
-          : `http://192.168.0.102:5000/api/posts/unfollowed/${user._id}`;
+          ? `https://api.zooda.in/api/posts/following/${user._id}`
+          : `https://api.zooda.in/api/posts/unfollowed/${user._id}`;
 
       const response = await axios.get(endpoint);
       const data = response.data;
@@ -2655,7 +2655,7 @@ const AllPostsPage = ({ onSelectPost, user }: AllPostsPageProps) => {
               `https://picsum.photos/600/400?random=${i}`;
 
             if (!imageUrl.startsWith("http")) {
-              imageUrl = `http://192.168.0.102:5000${
+              imageUrl = `https://api.zooda.in${
                 imageUrl.startsWith("/") ? "" : "/"
               }${imageUrl}`;
             }
@@ -2667,7 +2667,7 @@ const AllPostsPage = ({ onSelectPost, user }: AllPostsPageProps) => {
             if (companyId) {
               try {
                 const companyResponse = await axios.get(
-                  `http://192.168.0.102:5000/api/companies/${companyId}`
+                  `https://api.zooda.in/api/companies/${companyId}`
                 );
                 if (companyResponse.data.success) {
                   company = companyResponse.data.company;
@@ -2676,7 +2676,7 @@ const AllPostsPage = ({ onSelectPost, user }: AllPostsPageProps) => {
                   if (company.logoUrl) {
                     let logoUrl = company.logoUrl;
                     if (!logoUrl.startsWith("http")) {
-                      logoUrl = `http://192.168.0.102:5000${
+                      logoUrl = `https://api.zooda.in${
                         logoUrl.startsWith("/") ? "" : "/"
                       }${logoUrl}`;
                     }
@@ -2706,7 +2706,7 @@ const AllPostsPage = ({ onSelectPost, user }: AllPostsPageProps) => {
             if (user?._id && post._id) {
               try {
                 const likeResponse = await axios.get(
-                  `http://192.168.0.102:5000/api/post/${post._id}/like-status/${user._id}`
+                  `https://api.zooda.in/api/post/${post._id}/like-status/${user._id}`
                 );
                 isLiked = likeResponse.data.isLiked;
               } catch (err) {
@@ -2763,7 +2763,7 @@ const AllPostsPage = ({ onSelectPost, user }: AllPostsPageProps) => {
       };
       setPosts(updatedPosts);
 
-      await axios.post(`http://192.168.0.102:5000/api/post/${postId}/like`, {
+      await axios.post(`https://api.zooda.in/api/post/${postId}/like`, {
         userId: user._id,
       });
 
@@ -2792,7 +2792,7 @@ const AllPostsPage = ({ onSelectPost, user }: AllPostsPageProps) => {
 
     try {
       const response = await axios.post(
-        `http://192.168.0.102:5000/api/post/${postId}/comment`,
+        `https://api.zooda.in/api/post/${postId}/comment`,
         {
           text: commentText,
           userId: user._id,
@@ -2935,7 +2935,7 @@ const PostGridItem = ({
     if (!showComments && post._id) {
       try {
         const response = await axios.get(
-          `http://192.168.0.102:5000/api/post/${post._id}/comments`
+          `https://api.zooda.in/api/post/${post._id}/comments`
         );
         setPostComments(response.data.comments || []);
       } catch (err) {
@@ -2956,7 +2956,7 @@ const PostGridItem = ({
         setCommentText("");
         // Refresh comments
         const response = await axios.get(
-          `http://192.168.0.102:5000/api/post/${post._id}/comments`
+          `https://api.zooda.in/api/post/${post._id}/comments`
         );
         setPostComments(response.data.comments || []);
       }

@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
-const API_BASE_URL = 'http://192.168.0.102:5000/api';
+const API_BASE_URL = 'https://api.zooda.in/api';
 axios.defaults.baseURL = API_BASE_URL;
 axios.defaults.headers.common['Accept'] = 'application/json'; // Added common Accept header
 
