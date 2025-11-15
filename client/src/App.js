@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
-const API_BASE_URL = 'https://api.zooda.in/api';
+const API_BASE_URL = 'http://192.168.0.102:5000/api';
 axios.defaults.baseURL = API_BASE_URL;
 axios.defaults.headers.common['Accept'] = 'application/json'; // Added common Accept header
 
@@ -50,10 +50,6 @@ const StatCard = ({ title, value, icon, color }) => (
     <p className="text-3xl font-bold mt-3">{value}</p>
   </div>
 );
-
-
-
-// --- AUTH COMPONENTS ---
 const AuthScreen = ({ isRegister, onAuthSuccess, switchMode }) => {
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', password: '', confirmPassword: ''
@@ -143,26 +139,40 @@ const AuthScreen = ({ isRegister, onAuthSuccess, switchMode }) => {
     </div>
   );
 };
-
-// --- BUSINESS FLOW COMPONENTS ---
-
 const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }) => {
   const [formData, setFormData] = useState({
     businessName: "",
-    businessCategory: "ecommerce",
+    businessCategory: "",
     businessDescription: "",
     businessWebsite: "",
     businessAddress: "",
     businessPhone: "",
   });
+
   const [logoFile, setLogoFile] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [categories, setCategories] = useState([]);
 
+  // ---------------- FETCH CATEGORIES ----------------
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/admin/categories`);
+        setCategories(res.data || []);
+      } catch (err) {
+        console.error("Failed to load categories", err);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  // ---------------- SET EXISTING BUSINESS DATA ----------------
   useEffect(() => {
     if (existingBusiness) {
       setFormData({
         businessName: existingBusiness.businessName || "",
-        businessCategory: existingBusiness.businessCategory || "ecommerce",
+        businessCategory: existingBusiness.businessCategory || "",
         businessDescription: existingBusiness.businessDescription || "",
         businessWebsite: existingBusiness.businessWebsite || "",
         businessAddress: existingBusiness.businessAddress || "",
@@ -171,6 +181,7 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
     }
   }, [existingBusiness]);
 
+  // ---------------- FILE UPLOAD ----------------
   const handleFileChange = (e) => {
     setLogoFile(e.target.files[0]);
   };
@@ -181,7 +192,7 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
     setIsEditing(false);
   };
 
-  // ---------- READ-ONLY VIEW ----------
+  // ---------------- READ ONLY VIEW ----------------
   if (existingBusiness && !isEditing) {
     return (
       <div className="p-8 max-w-4xl mx-auto bg-white shadow-xl rounded-xl mt-10">
@@ -203,26 +214,33 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
             <p className="text-gray-500">Business Name</p>
             <p className="text-lg font-semibold">{existingBusiness.businessName}</p>
           </div>
+
           <div>
             <p className="text-gray-500">Category</p>
-            <p className="text-lg font-semibold capitalize">{existingBusiness.businessCategory}</p>
+            <p className="text-lg font-semibold capitalize">
+              {existingBusiness.businessCategory}
+            </p>
           </div>
+
           <div className="md:col-span-2">
             <p className="text-gray-500">Description</p>
             <p className="text-gray-700">{existingBusiness.businessDescription}</p>
           </div>
+
           <div>
             <p className="text-gray-500 flex items-center">
               <MapPin className="mr-2" size={16} /> Address
             </p>
             <p className="text-gray-700">{existingBusiness.businessAddress}</p>
           </div>
+
           <div>
             <p className="text-gray-500 flex items-center">
               <Phone className="mr-2" size={16} /> Phone
             </p>
             <p className="text-gray-700">{existingBusiness.businessPhone}</p>
           </div>
+
           {existingBusiness.businessWebsite && (
             <div>
               <p className="text-gray-500 flex items-center">
@@ -238,11 +256,12 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
               </a>
             </div>
           )}
+
           {existingBusiness.logoUrl && (
             <div className="md:col-span-2">
               <p className="text-gray-500">Logo</p>
               <img
-                src={`${existingBusiness.logoUrl}`}
+                src={existingBusiness.logoUrl}
                 alt="Business Logo"
                 className="w-32 h-32 object-cover rounded-lg border"
               />
@@ -253,7 +272,7 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
     );
   }
 
-  // ---------- EDIT MODE (FORM) ----------
+  // ---------------- EDIT (FORM) ----------------
   return (
     <div className="p-8 max-w-4xl mx-auto bg-white shadow-xl rounded-xl mt-10">
       <div className="flex justify-between items-center border-b pb-3 mb-6">
@@ -261,6 +280,7 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
           <UserPlus className="mr-3" />
           {existingBusiness ? "Edit Your Business Profile" : "Register Your Business"}
         </h2>
+
         {existingBusiness && (
           <button
             onClick={() => setIsEditing(false)}
@@ -275,96 +295,98 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <input
             type="text"
-            name="businessName"
             placeholder="Business Name"
             value={formData.businessName}
             onChange={(e) =>
               setFormData({ ...formData, businessName: e.target.value })
             }
-            className="p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+            className="p-3 border rounded-lg"
             required
           />
 
-          {/* ✅ Updated Category Options */}
+          {/* FETCHED CATEGORY OPTIONS */}
           <select
-            name="businessCategory"
             value={formData.businessCategory}
             onChange={(e) =>
               setFormData({ ...formData, businessCategory: e.target.value })
             }
-            className="p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+            className="p-3 border rounded-lg"
             required
           >
-            <option value="ecommerce">E-commerce</option>
-            <option value="lms">LMS</option>
+            <option value="">Select Category</option>
+
+            {categories.map((cat) => (
+              <option key={cat._id} value={cat.name}>
+                {cat.name}
+              </option>
+            ))}
           </select>
         </div>
 
         <textarea
-          name="businessDescription"
           placeholder="Description (Max 500 chars)"
           value={formData.businessDescription}
           onChange={(e) =>
             setFormData({ ...formData, businessDescription: e.target.value })
           }
-          className="w-full p-3 border rounded-lg h-24 focus:ring-indigo-500 focus:border-indigo-500"
+          className="w-full p-3 border rounded-lg h-24"
           required
           maxLength={500}
         />
+
         <input
           type="text"
-          name="businessAddress"
           placeholder="Physical Address"
           value={formData.businessAddress}
           onChange={(e) =>
             setFormData({ ...formData, businessAddress: e.target.value })
           }
-          className="w-full p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+          className="w-full p-3 border rounded-lg"
           required
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <input
             type="url"
-            name="businessWebsite"
-            placeholder="Website URL (Optional)"
+            placeholder="Website URL"
             value={formData.businessWebsite}
             onChange={(e) =>
               setFormData({ ...formData, businessWebsite: e.target.value })
             }
-            className="p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+            className="p-3 border rounded-lg"
           />
+
           <input
             type="tel"
-            name="businessPhone"
             placeholder="Phone Number"
             value={formData.businessPhone}
             onChange={(e) =>
               setFormData({ ...formData, businessPhone: e.target.value })
             }
-            className="p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+            className="p-3 border rounded-lg"
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Business Logo (Optional, Max 10MB)
-          </label>
-          <input
-            type="file"
-            name="logo"
-            onChange={handleFileChange}
-            accept="image/*"
-            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-          />
-        </div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Business Logo
+  </label>
+
+  <input type="file" accept="image/*" onChange={handleFileChange} />
+
+  {/* 📌 Image size instruction text */}
+  <p className="text-xs text-gray-500 mt-1">
+    Recommended size: <strong>500px × 500px</strong>
+  </p>
+</div>
+
 
         <div className="flex space-x-4">
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition duration-200 disabled:opacity-50"
+            className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg"
           >
             {loading
               ? "Submitting..."
@@ -372,22 +394,11 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
               ? "Update Profile"
               : "Register Business"}
           </button>
-          {onCancel && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-lg transition duration-200"
-            >
-              Cancel
-            </button>
-          )}
         </div>
       </form>
     </div>
   );
 };
-
-
 const BusinessPendingScreen = ({ business, onLogout }) => {
   const [polling, setPolling] = useState(true);
 
@@ -437,9 +448,6 @@ const BusinessPendingScreen = ({ business, onLogout }) => {
     </div>
   );
 };
-
-
-// --- DashboardScreen Component (REVISED) ---
 const DashboardScreen = ({ existingBusiness, user, notify }) => {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -553,7 +561,7 @@ const DashboardScreen = ({ existingBusiness, user, notify }) => {
           color="bg-purple-500"
         />
         <StatCard
-          title="Followers (Mock)"
+          title="Followers"
           value={followers} 
           icon={<Users size={24} />}
           color="bg-pink-500"
@@ -630,7 +638,6 @@ const DashboardScreen = ({ existingBusiness, user, notify }) => {
     </div>
   );
 };
-
 const PostCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
   const [formData, setFormData] = useState({
     content: '',
@@ -739,8 +746,11 @@ const PostCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
           {/* Media */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Media (Image/Video)
+              Media 
             </label>
+             <p className="text-xs text-gray-500 mt-1">
+    Recommended size: <strong>500px × 300px</strong>
+  </p>
             <input
               type="file"
               accept="image/*,video/*"
@@ -762,8 +772,6 @@ const PostCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
     </div>
   );
 };
-
-
 const CommentSection = ({ postId, comments, setComments, notify, currentUser }) => {
   const [newCommentText, setNewCommentText] = useState('');
   const [isCommenting, setIsCommenting] = useState(false);
@@ -1004,7 +1012,6 @@ const PostCard = ({ post, notify, currentUser, onDelete }) => {
     </div>
   );
 };
-
 const PostsScreen = ({ business, currentUser, notify }) => {
   const [posts, setPosts] = useState([]);
   const [isPostFormOpen, setIsPostFormOpen] = useState(false);
@@ -1079,25 +1086,27 @@ const PostsScreen = ({ business, currentUser, notify }) => {
         />
       )}
       
-      <div className="space-y-6 mt-6">
-        {posts.length > 0 ? posts.map(post => (
-          <PostCard 
-            key={post._id} 
-            post={post} 
-            notify={notify} 
-            currentUser={currentUser}
-            onDelete={handleDeletePost}
-          />
-        )) : (
-          <p className="text-center text-gray-500 p-8 bg-white rounded-xl shadow">
-            No posts found for this business.
-          </p>
-        )}
-      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+  {posts.length > 0 ? posts.map(post => (
+    <PostCard
+      key={post._id}
+      post={post}
+      notify={notify}
+      currentUser={currentUser}
+      onDelete={handleDeletePost}
+    />
+  )) : (
+    <div className="col-span-2">
+      <p className="text-center text-gray-500 p-8 bg-white rounded-xl shadow">
+        No posts found for this business.
+      </p>
+    </div>
+  )}
+</div>
+
     </div>
   );
 };
-
 const ProductCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
   const [formData, setFormData] = useState({ 
     name: '', 
@@ -1174,6 +1183,9 @@ const ProductCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Product Image (Required)
             </label>
+                         <p className="text-xs text-gray-500 mt-1">
+    Recommended size: <strong>300px × 300px</strong>
+  </p>
             <input 
               type="file" 
               required 
@@ -1521,28 +1533,6 @@ const PromotionCreateForm = ({
             </div>
           </div>
 
-          {/* Platforms */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Platforms
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {platformOptions.map((platform) => (
-                <label
-                  key={platform.value}
-                  className="flex items-center space-x-2"
-                >
-                  <input
-                    type="checkbox"
-                    checked={formData.platforms.includes(platform.value)}
-                    onChange={() => handlePlatformChange(platform.value)}
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span className="text-sm">{platform.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
 
           {/* Status */}
           <div>
@@ -1566,8 +1556,11 @@ const PromotionCreateForm = ({
           {/* Image */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Promotion Image (Optional)
+              Promotion Image 
             </label>
+                         <p className="text-xs text-gray-500 mt-1">
+    Recommended size: <strong>300px × 300px</strong>
+  </p>
             <input
               type="file"
               accept="image/*"
@@ -1710,9 +1703,8 @@ const PromotionCard = ({ promotion, onEdit, notify, onStatusChange, onDelete }) 
 
               {promotion.performance && (
                 <div className="text-sm text-gray-500">
-                  <span className="mr-3">👁️ {promotion.performance.impressions || 0}</span>
-                  <span className="mr-3">👆 {promotion.performance.clicks || 0}</span>
-                  <span>💰 {promotion.performance.conversions || 0}</span>
+                  <span className="mr-3">👁️ views {promotion.performance.impressions || 0}</span>
+                  <span className="mr-3">👆 clicks {promotion.performance.clicks || 0}</span>
                 </div>
               )}
             </div>
@@ -1976,8 +1968,6 @@ const Sidebar = ({ currentPage, onPageChange, business, onLogout, isOpen, onClos
     </div>
   );
 };
-
-// --- MAIN APP COMPONENT ---
 const App = () => {
   const [token, setToken] = useState(localStorage.getItem('token') || null);
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || 'null'));

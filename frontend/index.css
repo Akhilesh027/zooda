@@ -493,7 +493,9 @@ body {
 
   .company-stats {
     font-size: 0.75rem;
-    gap: 15px;
+    gap: 10px;
+            display: flex;
+        justify-content: space-between;
   }
 
   .visit-btn,
@@ -810,7 +812,7 @@ body {
 .post-card {
     background-color: var(--light-grey);
     border-radius: 12px;
-    overflow: hidden;
+   
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
 }
@@ -877,12 +879,12 @@ body {
 .post-detail-page {
     background-color: var(--white);
     color: var(--text-color);
-    height: 100%;
+    height: auto;
 }
 
 .post-detail-content {
     flex-grow: 1;
-    overflow-y: auto;
+    overflow: auto;
 }
 
 .post-feed-item {
@@ -895,7 +897,7 @@ body {
 
 .post-image {
     width: 100%;
-    height: auto;
+    height: 600px;
     display: block;
     object-fit: cover;
 }
@@ -1289,7 +1291,12 @@ body {
     .posts-grid {
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     }
-
+.post-image {
+    width: 100%;
+    height: 400px;
+    display: block;
+    object-fit: cover;
+}
     .banner {
         margin: 24px;
         padding: 30px;
@@ -1480,6 +1487,12 @@ body {
   .about-section {
     padding: 1rem;
   }
+  .post-image {
+    width: 100%;
+    height: 400px;
+    display: block;
+    object-fit: cover;
+}
 }
 
 /* Animation for page load */
@@ -1557,7 +1570,12 @@ body {
     object-fit: cover;
   }
 }
-
+.post-image {
+    width: 100%;
+    height: 400px;
+    display: block;
+    object-fit: cover;
+}
 .filters {
   display: flex;
   gap: 1rem;
@@ -1767,4 +1785,79 @@ body {
 
 .register-modal {
   max-width: 500px;
+}
+/* Hide bottom navigation on laptop/desktop */
+.app-nav.mobile-only {
+  display: flex;
+}
+
+/* Show on mobile and tablet */
+@media (max-width: 1024px) {
+  .app-nav.mobile-only {
+    display: flex;
+  }
+}
+
+/* Hide on laptop/desktop (1025px and above) */
+@media (min-width: 1025px) {
+  .app-nav.mobile-only {
+    display: none !important;
+  }
+}
+
+/* Ensure main content takes full height when nav is hidden */
+@media (min-width: 1025px) {
+  .main-column {
+    height: 100vh;
+  }
+  
+  .main-wrapper {
+    height: calc(100vh - 60px); /* Adjust based on your header height */
+    overflow-y: auto;
+  }
+}
+
+/* Existing app-nav styles (keep these) */
+.app-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #000000;
+  border-top: 1px solid #363636;
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 0;
+  z-index: 1000;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  color: #a8a8a8;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.nav-item.active {
+  color: #ffffff;
+  background: #363636;
+}
+
+.nav-item:hover {
+  color: #ffffff;
+  background: #363636;
+}
+
+.material-icons {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.nav-text {
+  font-size: 12px;
+  font-weight: 500;
 }

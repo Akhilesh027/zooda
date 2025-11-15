@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://api.zooda.in"; // update to your backend URL if needed
+const API_BASE_URL = "http://192.168.0.102:5000"; // update to your backend URL if needed
 
 export interface Promotion {
   id?: string;

@@ -73,6 +73,10 @@ const ClientSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   company: { type: String, default: "" },
   password: { type: String, required: true },
+ profileImage: {
+    type: String,
+    default: ""
+  },
   interests: { type: [String], default: [] }, // store client interests
 }, { timestamps: true });
 ClientSchema.pre("save", async function (next) {
@@ -103,9 +107,7 @@ const businessSchema = new mongoose.Schema({
    businessCategory: {
     type: String,
     required: true,
-    enum: ['ecommerce', 'lms'],
 },
-
     businessDescription: { 
         type: String, 
         required: true, 
@@ -1954,7 +1956,174 @@ app.get("/api/post/:postId/likes", async (req, res) => {
     });
   }
 });
+// Upload profile image
+app.post("/api/user/:userId/upload-image", async (req, res) => {
+  const { userId } = req.params;
 
+  try {
+    // Check if user exists
+    const user = await Client.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // In a real application, you would handle file upload here
+    // For now, we'll assume the image URL is provided in the request
+    const { imageUrl } = req.body;
+
+    if (!imageUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "Image URL is required"
+      });
+    }
+
+    // Update user's profile image
+    user.profileImage = imageUrl;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Profile image updated successfully",
+      profileImage: imageUrl
+    });
+  } catch (err) {
+    console.error("Error uploading profile image:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error while uploading profile image"
+    });
+  }
+});
+// Get user's followed businesses
+app.get("/api/user/:userId/following", async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    // Find user and populate following businesses with full details
+    const user = await Client.findById(userId)
+      .select("following")
+      .populate({
+        path: "following",
+        select: "businessName businessCategory businessDescription businessWebsite logoUrl verified followers totalPosts totalProducts engagementRate",
+        model: "Business"
+      });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // Process businesses to ensure proper logo URLs
+    const followingBusinesses = user.following.map(business => {
+      const businessObj = business.toObject();
+      
+      // Ensure logo URL is properly formatted
+      if (businessObj.logoUrl && !businessObj.logoUrl.startsWith("http")) {
+        businessObj.logoUrl = `${process.env.API_BASE_URL || 'http://192.168.0.102:5000'}${businessObj.logoUrl.startsWith("/") ? "" : "/"}${businessObj.logoUrl}`;
+      }
+
+      // Generate username from businessName
+      if (businessObj.businessName) {
+        businessObj.username = businessObj.businessName.toLowerCase().replace(/[\s.]/g, "_");
+        businessObj.name = businessObj.businessName; // Add alias for frontend
+      }
+
+      return businessObj;
+    });
+
+    res.json({
+      success: true,
+      following: followingBusinesses,
+      count: followingBusinesses.length
+    });
+  } catch (err) {
+    console.error("Error fetching user's following businesses:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching followed businesses"
+    });
+  }
+});
+// Update user profile
+app.put("/api/user/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const { name, email, phone, bio, website, profileImage } = req.body;
+
+  try {
+    // Check if user exists
+    const user = await Client.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // Check if email is being changed and if it's already taken
+    if (email && email !== user.email) {
+      const existingUser = await Client.findOne({ email });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: "Email already exists"
+        });
+      }
+    }
+
+    // Update user fields
+    const updateFields = {};
+    if (name) updateFields.name = name;
+    if (email) updateFields.email = email;
+    if (phone !== undefined) updateFields.phone = phone;
+    if (bio !== undefined) updateFields.bio = bio;
+    if (website !== undefined) updateFields.website = website;
+    if (profileImage !== undefined) updateFields.profileImage = profileImage;
+
+    // Update user
+    const updatedUser = await Client.findByIdAndUpdate(
+      userId,
+      { $set: updateFields },
+      { new: true, runValidators: true }
+    ).select("-password"); // Exclude password from response
+
+    res.json({
+      success: true,
+      message: "Profile updated successfully",
+      user: updatedUser
+    });
+  } catch (err) {
+    console.error("Error updating user profile:", err);
+    
+    // Handle validation errors
+    if (err.name === 'ValidationError') {
+      const errors = Object.values(err.errors).map(error => error.message);
+      return res.status(400).json({
+        success: false,
+        message: "Validation error",
+        errors
+      });
+    }
+
+    // Handle duplicate key error
+    if (err.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already exists"
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating profile"
+    });
+  }
+});
 app.post("/api/unfollow/:businessId", async (req, res) => {
  const { businessId } = req.params;
   const { userId } = req.body;
@@ -2018,24 +2187,76 @@ app.get("/api/posts/following/:userId", async (req, res) => {
   const { userId } = req.params;
 
   try {
-    // Step 1: Find all businesses the user follows
-    const businesses = await Business.find({ followersList: userId }).select("_id");
+    // Step 1: Find all businesses the user follows with complete details
+    const businesses = await Business.find({ 
+      followersList: userId,
+      status: 'active' // Only include active businesses
+    }).select("_id businessName businessCategory businessDescription businessWebsite businessAddress businessPhone logoUrl verified followers totalPosts");
 
     if (!businesses || businesses.length === 0) {
-      return res.json({ success: true, posts: [], message: "User is not following any businesses" });
+      return res.json({ 
+        success: true, 
+        posts: [], 
+        message: "User is not following any businesses" 
+      });
     }
 
     const businessIds = businesses.map(b => b._id);
 
     // Step 2: Get all posts from those businesses
-    const posts = await Post.find({ business: { $in: businessIds } })
-      .populate("business", "name") // optional: populate business name
+    const posts = await Post.find({ 
+      business: { $in: businessIds } 
+    })
+      .populate({
+        path: 'business',
+        select: 'businessName businessCategory businessDescription businessWebsite logoUrl verified followers totalPosts createdAt',
+        model: 'Business'
+      })
       .sort({ createdAt: -1 }); // newest first
+
+    // Process posts to include complete business information
+    const processedPosts = posts.map(post => {
+      const postObj = post.toObject();
+      
+      // If business is not populated but we have business ID, find the business details
+      if (!postObj.business || !postObj.business.businessName) {
+        const businessId = postObj.business?._id || postObj.business;
+        const foundBusiness = businesses.find(b => b._id.toString() === businessId?.toString());
+        
+        if (foundBusiness) {
+          postObj.business = foundBusiness.toObject();
+        } else {
+          postObj.business = {
+            _id: businessId,
+            businessName: "Unknown Business",
+            username: "unknown_business",
+            logoUrl: null
+          };
+        }
+      }
+
+      // Ensure logo URL is properly formatted
+      if (postObj.business && postObj.business.logoUrl) {
+        let logoUrl = postObj.business.logoUrl;
+        if (!logoUrl.startsWith("http")) {
+          logoUrl = `${process.env.API_BASE_URL || 'http://192.168.0.102:5000'}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
+        }
+        postObj.business.logoUrl = logoUrl;
+      }
+
+      // Generate username from businessName for consistency
+      if (postObj.business && postObj.business.businessName) {
+        postObj.business.username = postObj.business.businessName.toLowerCase().replace(/[\s.]/g, "_");
+        postObj.business.name = postObj.business.businessName; // Add alias for frontend
+      }
+      
+      return postObj;
+    });
 
     res.json({
       success: true,
-      count: posts.length,
-      posts,
+      count: processedPosts.length,
+      posts: processedPosts,
     });
   } catch (err) {
     console.error("Error fetching following posts:", err);
@@ -2050,19 +2271,120 @@ app.get("/api/posts/unfollowed/:userId", async (req, res) => {
   const { userId } = req.params;
 
   try {
-    const followedBusinesses = await Business.find({ followersList: userId }).select("_id");
+    const followedBusinesses = await Business.find({ 
+      followersList: userId 
+    }).select("_id");
+    
     const followedIds = followedBusinesses.map(b => b._id);
+
+    // Get all businesses that are not followed
+    const unfollowedBusinesses = await Business.find({
+      _id: { $nin: followedIds },
+      status: 'active'
+    }).select("_id businessName businessCategory businessDescription businessWebsite logoUrl verified followers totalPosts");
 
     const posts = await Post.find({
       business: { $nin: followedIds }, // not followed businesses
     })
-      .populate("business", "name")
+      .populate({
+        path: 'business',
+        select: 'businessName businessCategory businessDescription businessWebsite logoUrl verified followers totalPosts createdAt',
+        model: 'Business'
+      })
       .sort({ createdAt: -1 });
 
-    res.json({ success: true, count: posts.length, posts });
+    // Process posts to include complete business information
+    const processedPosts = posts.map(post => {
+      const postObj = post.toObject();
+      
+      // If business is not populated but we have business ID, find the business details
+      if (!postObj.business || !postObj.business.businessName) {
+        const businessId = postObj.business?._id || postObj.business;
+        const foundBusiness = unfollowedBusinesses.find(b => b._id.toString() === businessId?.toString());
+        
+        if (foundBusiness) {
+          postObj.business = foundBusiness.toObject();
+        } else {
+          postObj.business = {
+            _id: businessId,
+            businessName: "Unknown Business",
+            username: "unknown_business",
+            logoUrl: null
+          };
+        }
+      }
+
+      // Ensure logo URL is properly formatted
+      if (postObj.business && postObj.business.logoUrl) {
+        let logoUrl = postObj.business.logoUrl;
+        if (!logoUrl.startsWith("http")) {
+          logoUrl = `${process.env.API_BASE_URL || 'http://192.168.0.102:5000'}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
+        }
+        postObj.business.logoUrl = logoUrl;
+      }
+
+      // Generate username from businessName for consistency
+      if (postObj.business && postObj.business.businessName) {
+        postObj.business.username = postObj.business.businessName.toLowerCase().replace(/[\s.]/g, "_");
+        postObj.business.name = postObj.business.businessName; // Add alias for frontend
+      }
+      
+      return postObj;
+    });
+
+    res.json({ 
+      success: true, 
+      count: processedPosts.length, 
+      posts: processedPosts 
+    });
   } catch (err) {
     console.error("Error fetching unfollowed posts:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error while fetching unfollowed posts" 
+    });
+  }
+});
+app.get("/api/companies/:companyId", async (req, res) => {
+  const { companyId } = req.params;
+
+  try {
+    const company = await Business.findById(companyId)
+      .select("businessName businessCategory businessDescription businessWebsite businessAddress businessPhone logoUrl status verified followers totalPosts totalProducts engagementRate createdAt");
+
+    if (!company) {
+      return res.status(404).json({
+        success: false,
+        message: "Business not found"
+      });
+    }
+
+    // Process logo URL
+    const companyObj = company.toObject();
+    if (companyObj.logoUrl) {
+      let logoUrl = companyObj.logoUrl;
+      if (!logoUrl.startsWith("http")) {
+        logoUrl = `${process.env.API_BASE_URL || 'http://localhost:3000'}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
+      }
+      companyObj.logoUrl = logoUrl;
+    }
+
+    // Generate username from businessName for frontend consistency
+    if (companyObj.businessName) {
+      companyObj.username = companyObj.businessName.toLowerCase().replace(/[\s.]/g, "_");
+      companyObj.name = companyObj.businessName; // Add alias for frontend compatibility
+    }
+
+    res.json({
+      success: true,
+      company: companyObj
+    });
+  } catch (err) {
+    console.error("Error fetching company details:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching company details"
+    });
   }
 });
 // Increment promotion performance (impression or click)
@@ -2494,7 +2816,6 @@ app.get('/api/admin/categories', async (req, res) => {
   }
 });
 
-// Create category
 app.post('/api/admin/categories', async (req, res) => {
   try {
     const { name } = req.body;
