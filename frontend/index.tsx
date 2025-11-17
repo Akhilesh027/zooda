@@ -840,7 +840,7 @@ const SearchPage = ({
             color: #000;
             border: none;
             padding: 10px 20px;
-            border-radius: 8px;
+            borderRadius: 8px;
             font-size: 1rem;
             font-weight: bold;
             cursor: pointer;
@@ -858,7 +858,7 @@ const SearchPage = ({
           right: 10px;
           background: rgba(255, 255, 255, 0.1);
           border: none;
-          border-radius: 50%;
+          borderRadius: 50%;
           width: 30px;
           height: 30px;
           display: flex;
@@ -3711,645 +3711,89 @@ body {
 const styleSheet = document.createElement("style");
 styleSheet.innerText = styles;
 document.head.appendChild(styleSheet);
-interface PostItemProps {
-  post: Post;
-  company: Company;
-  user?: User;
-  onLoginRequest?: () => void; // ✅ Add login request callback
-}
-
-const PostItem = ({ post, company, user, onLoginRequest }: PostItemProps) => {
-  const companyUsername = company.name.toLowerCase().replace(/[\s.]/g, "_");
-  const [likes, setLikes] = useState(post.likes || 0);
-  const [comments, setComments] = useState(post.comments || 0);
-  const [commentText, setCommentText] = useState("");
-  const [isLiked, setIsLiked] = useState(false);
-  const [showComments, setShowComments] = useState(false);
-  const [postComments, setPostComments] = useState<Comment[]>([]);
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  const [actionError, setActionError] = useState(""); // ✅ Add error state for login prompts
-
-  useEffect(() => {
-    const checkLikeStatus = async () => {
-      if (user?._id && post._id) {
-        try {
-          const response = await axios.get(
-            `${API_BASE_URL}/api/post/${post._id}/like-status/${user._id}`
-          );
-          setIsLiked(response.data.isLiked);
-        } catch (err) {
-          console.error("Error checking like status:", err);
-        }
-      }
-    };
-
-    const loadComments = async () => {
-      if (post._id) {
-        try {
-          const response = await axios.get(
-            `${API_BASE_URL}/api/post/${post._id}/comments`
-          );
-          setPostComments(response.data.comments || []);
-        } catch (err) {
-          console.error("Error loading comments:", err);
-        }
-      }
-    };
-
-    checkLikeStatus();
-    loadComments();
-  }, [user?._id, post._id]);
-
-  const formattedDate = new Date(
-    post.createdAt || post.date
-  ).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-
-  const imageUrl = post.mediaUrl || post.imageUrl;
-
-  const handleLike = async () => {
-    if (!user?._id) {
-      setActionError("Please login to like posts");
-      return;
-    }
-
-    try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/post/${post._id}/like`,
-        {
-          userId: user._id,
-        }
-      );
-      setLikes(response.data.likesCount);
-      setIsLiked(response.data.isLiked);
-      setActionError(""); // Clear any previous errors
-    } catch (err) {
-      console.error("Error liking post:", err);
-    }
-  };
-
-  const handleComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!commentText.trim() || !post._id) return;
-
-    if (!user?._id) {
-      setActionError("Please login to comment");
-      return;
-    }
-
-    setIsSubmittingComment(true);
-    setActionError(""); // Clear any previous errors
-    try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/post/${post._id}/comment`,
-        {
-          text: commentText,
-          userId: user._id,
-        }
-      );
-      setComments(response.data.commentsCount);
-      setCommentText("");
-
-      const commentsResponse = await axios.get(
-        `${API_BASE_URL}/api/post/${post._id}/comments`
-      );
-      setPostComments(commentsResponse.data.comments || []);
-    } catch (err) {
-      console.error("Error commenting:", err);
-    } finally {
-      setIsSubmittingComment(false);
-    }
-  };
-
-  const toggleComments = async () => {
-    if (!user?._id) {
-      setActionError("Please login to view comments");
-      return;
-    }
-
-    if (!showComments && post._id) {
-      try {
-        const response = await axios.get(
-          `${API_BASE_URL}/api/post/${post._id}/comments`
-        );
-        setPostComments(response.data.comments || []);
-      } catch (err) {
-        console.error("Error loading comments:", err);
-      }
-    }
-    setShowComments(!showComments);
-    setActionError(""); // Clear error when toggling comments
-  };
-
-  const handleShare = async () => {
-    const shareUrl = `${window.location.origin}/post/${post._id}`;
-    const shareText = `Check out this post from ${company.name}: ${post.content || 'Interesting content'}`;
-
-    // Web Share API (for mobile devices)
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `${company.name} - Post`,
-          text: shareText,
-          url: shareUrl,
-        });
-        console.log('Share successful');
-      } catch (err) {
-        // User canceled the share
-        console.log('Share canceled');
-      }
-    } 
-    // Fallback for desktop browsers
-    else if (navigator.clipboard) {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        // Show success message
-        setActionError("Link copied to clipboard! 📋");
-        setTimeout(() => setActionError(""), 3000); // Clear message after 3 seconds
-      } catch (err) {
-        // Fallback to old method
-        copyToClipboardFallback(shareUrl);
-      }
-    } else {
-      copyToClipboardFallback(shareUrl);
-    }
-  };
-
-  // Fallback copy method
-  const copyToClipboardFallback = (text: string) => {
-    const textArea = document.createElement('textarea');
-    textArea.value = text;
-    document.body.appendChild(textArea);
-    textArea.select();
-    try {
-      document.execCommand('copy');
-      setActionError("Link copied to clipboard! 📋");
-      setTimeout(() => setActionError(""), 3000);
-    } catch (err) {
-      setActionError("Failed to copy link");
-      setTimeout(() => setActionError(""), 3000);
-    }
-    document.body.removeChild(textArea);
-  };
-
-  const handleLoginClick = () => {
-    if (onLoginRequest) {
-      onLoginRequest();
-      setActionError(""); // Clear error when login is initiated
-    }
-  };
-
-  return (
-    <article className="post-grid-item">
-      {/* Header with Business Info */}
-      <div className="post-header">
-        <div className="business-info">
-          <div className="business-avatar">
-            {company.name?.charAt(0) || 'B'}
-          </div>
-          <div className="business-details">
-            <strong className="business-name">
-              {company.name || "Business Name"}
-            </strong>
-            <span className="business-username">@{companyUsername}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Post Image */}
-      <div className="post-image-container">
-        <img
-          src={imageUrl}
-          alt={post.content || post.caption || "Post image"}
-          className="post-image"
-        />
-      </div>
-
-      {/* Action Error Message */}
-      {actionError && (
-        <div className="action-error">
-          <span>{actionError}</span>
-          {actionError.includes("login") && onLoginRequest && (
-            <button 
-              onClick={handleLoginClick}
-              className="login-link-btn"
-            >
-              Login
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Engagement Section */}
-      <div className="post-engagement">
-        <div className="engagement-left">
-          <button
-            className={`like-btn ${isLiked ? 'liked' : ''}`}
-            onClick={handleLike}
-          >
-            <span className="material-icons">
-              {isLiked ? "favorite" : "favorite_border"}
-            </span>
-          </button>
-          <button 
-            className="comment-btn"
-            onClick={toggleComments}
-          >
-            <span className="material-icons">chat_bubble_outline</span>
-          </button>
-          <button 
-            className="share-btn"
-            onClick={handleShare}
-          >
-            <span className="material-icons">send</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Post Stats and Content */}
-      <div className="post-content">
-        {likes > 0 && (
-          <div className="post-stats">
-            <strong>{likes.toLocaleString()} likes</strong>
-          </div>
-        )}
-
-        <div className="post-caption">
-          <strong className="username">@{companyUsername}</strong> 
-          <span className="caption-text">{post.content || post.caption}</span>
-        </div>
-
-        {comments > 0 && (
-          <button 
-            className="view-comments"
-            onClick={toggleComments}
-          >
-            View all {comments} comments
-          </button>
-        )}
-
-        {/* Comments Section */}
-        {showComments && (
-          <div className="comments-section">
-            {!user?._id ? (
-              <div className="login-prompt-comments">
-                <p>Please login to view and post comments</p>
-                {onLoginRequest && (
-                  <button 
-                    onClick={handleLoginClick}
-                    className="login-btn-small"
-                  >
-                    Login
-                  </button>
-                )}
-              </div>
-            ) : (
-              <>
-                {postComments.map((comment, index) => (
-                  <div key={index} className="comment-item">
-                    <strong className="comment-username">
-                      {comment.user?.name || 'User'}
-                    </strong>
-                    <span className="comment-text">{comment.text}</span>
-                  </div>
-                ))}
-                
-                {/* Comment Input */}
-                <form onSubmit={handleComment} className="comment-form">
-                  <input
-                    type="text"
-                    placeholder="Add a comment..."
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    className="comment-input"
-                    disabled={isSubmittingComment || !user?._id}
-                  />
-                  <button
-                    type="submit"
-                    className="comment-submit-btn"
-                    disabled={!commentText.trim() || isSubmittingComment || !user?._id}
-                  >
-                    {isSubmittingComment ? 'Posting...' : 'Post'}
-                  </button>
-                </form>
-              </>
-            )}
-          </div>
-        )}
-
-        <div className="post-date">{formattedDate}</div>
-      </div>
-    </article>
-  );
-};
 // ---------------- POST DETAIL PAGE ----------------
 interface PostDetailPageProps {
   data: { post: Post; company: Company };
   onBack: () => void;
   user?: User;
-  onLoginRequest?: () => void; // ✅ Add login request callback
+  onLoginRequest?: () => void;
 }
 
-const PostDetailPage = ({ data, onBack, user, onLoginRequest }: PostDetailPageProps) => (
-  <div className="post-detail-page">
-    <main className="post-detail-content">
-      <PostItem 
-        post={data.post} 
-        company={data.company} 
-        user={user} 
-        onLoginRequest={onLoginRequest} // ✅ Pass the login handler
-      />
-    </main>
-  </div>
-);
+const PostDetailPage = ({ data, onBack, user, onLoginRequest }: PostDetailPageProps) => {
+  const [post, setPost] = useState<Post>(data.post);
+  const [company, setCompany] = useState<Company>(data.company);
+  const [loading, setLoading] = useState(!data.post._id);
 
-// Add these styles to your existing CSS
-const additionalStyles = `
-.post-detail-page {
-  background: #000000;
-  min-height: 100vh;
-  color: #ffffff;
-}
+  useEffect(() => {
+    // If post data is incomplete, fetch it
+    if (!data.post._id && data.post._id) {
+      fetchPostDetails(data.post._id);
+    }
+  }, [data.post._id]);
 
-.post-detail-header {
-  display: flex;
-  align-items: center;
-  padding: 16px;
-  border-bottom: 1px solid #363636;
-  background: #000000;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
+  const fetchPostDetails = async (postId: string) => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_BASE_URL}/api/post/${postId}`);
+      if (response.data.success) {
+        setPost(response.data.post);
+        
+        // If company data is incomplete, fetch it too
+        if (!data.company._id && response.data.post.businessId) {
+          const companyResponse = await axios.get(`${API_BASE_URL}/api/companies/${response.data.post.businessId}`);
+          if (companyResponse.data.success) {
+            setCompany(companyResponse.data.company);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching post details:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-.post-detail-header h2 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #ffffff;
-  margin-left: 16px;
-}
+  if (loading) {
+    return (
+      <div className="post-detail-page">
+        <header className="post-detail-header">
+          <button onClick={onBack} className="back-button">
+            <span className="material-icons">arrow_back</span>
+          </button>
+          <h2>Post</h2>
+        </header>
+        <div className="loading-container">
+          <p>Loading post...</p>
+        </div>
+      </div>
+    );
+  }
 
-.back-button {
-  background: none;
-  border: none;
-  color: #ffffff;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.back-button:hover {
-  background: #363636;
-}
-
-.post-detail-content {
-  max-width: 614px;
-  margin: 0 auto;
-  padding: 20px 0;
-}
-
-/* Ensure PostItem uses the same styles as PostGridItem */
-.post-feed-item {
-  background: #000000;
-  border: 1px solid #363636;
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 20px;
-}
-
-.post-feed-item .post-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 16px;
-  background: #000000;
-}
-
-.post-feed-item .business-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.post-feed-item .business-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(45deg, #405DE6, #5851DB, #833AB4, #C13584, #E1306C, #FD1D1D);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: bold;
-  font-size: 14px;
-}
-
-.post-feed-item .business-details {
-  display: flex;
-  flex-direction: column;
-}
-
-.post-feed-item .business-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.post-feed-item .business-username {
-  font-size: 12px;
-  color: #a8a8a8;
-}
-
-.post-feed-item .post-image-container {
-  background: #000000;
-}
-
-.post-feed-item .post-image {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-.post-feed-item .post-engagement {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  background: #000000;
-}
-
-.post-feed-item .engagement-left {
-  display: flex;
-  gap: 16px;
-}
-
-.post-feed-item .like-btn,
-.post-feed-item .comment-btn,
-.post-feed-item .share-btn,
-.post-feed-item .bookmark-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  color: #ffffff;
-}
-
-.post-feed-item .like-btn.liked .material-icons {
-  color: #ed4956;
-}
-
-.post-feed-item .material-icons {
-  font-size: 24px;
-  color: #ffffff;
-  transition: transform 0.2s ease;
-}
-
-.post-feed-item .material-icons:hover {
-  transform: scale(1.1);
-}
-
-.post-feed-item .post-content {
-  padding: 0 16px 16px;
-  background: #000000;
-}
-
-.post-feed-item .post-stats {
-  margin-bottom: 8px;
-}
-
-.post-feed-item .post-stats strong {
-  font-size: 14px;
-  color: #ffffff;
-}
-
-.post-feed-item .post-caption {
-  font-size: 14px;
-  margin-bottom: 8px;
-  line-height: 1.4;
-  color: #ffffff;
-}
-
-.post-feed-item .username {
-  color: #ffffff;
-  font-weight: 600;
-  margin-right: 6px;
-}
-
-.post-feed-item .caption-text {
-  color: #ffffff;
-}
-
-.post-feed-item .view-comments {
-  background: none;
-  border: none;
-  color: #a8a8a8;
-  font-size: 14px;
-  cursor: pointer;
-  padding: 0;
-  margin-bottom: 8px;
-  transition: color 0.2s ease;
-}
-
-.post-feed-item .view-comments:hover {
-  color: #ffffff;
-}
-
-.post-feed-item .comments-section {
-  margin: 12px 0;
-  border-top: 1px solid #363636;
-  padding-top: 12px;
-}
-
-.post-feed-item .comment-item {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-
-.post-feed-item .comment-username {
-  color: #ffffff;
-  font-weight: 600;
-}
-
-.post-feed-item .comment-text {
-  color: #ffffff;
-}
-
-.post-feed-item .comment-form {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.post-feed-item .comment-input {
-  flex: 1;
-  background: #000000;
-  border: 1px solid #363636;
-  border-radius: 4px;
-  padding: 8px 12px;
-  color: #ffffff;
-  font-size: 14px;
-}
-
-.post-feed-item .comment-input::placeholder {
-  color: #a8a8a8;
-}
-
-.post-feed-item .comment-input:focus {
-  outline: none;
-  border-color: #0095f6;
-}
-
-.post-feed-item .comment-submit-btn {
-  background: #0095f6;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-}
-
-.post-feed-item .comment-submit-btn:disabled {
-  background: #363636;
-  color: #a8a8a8;
-  cursor: not-allowed;
-}
-
-.post-feed-item .comment-submit-btn:not(:disabled):hover {
-  opacity: 0.8;
-}
-
-.post-feed-item .post-date {
-  font-size: 10px;
-  color: #a8a8a8;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 8px;
-}
-`;
-
-// Add the additional styles to your document
-const additionalStyleSheet = document.createElement("style");
-additionalStyleSheet.innerText = additionalStyles;
-document.head.appendChild(additionalStyleSheet);
-
-// ---------------- UPDATED PROFILE PAGE (PROMOTIONS REMOVED) ----------------
+  return (
+    <div className="post-detail-page">
+      <header className="post-detail-header">
+        <button onClick={onBack} className="back-button">
+          <span className="material-icons">arrow_back</span>
+        </button>
+        <h2>Post</h2>
+      </header>
+      <main className="post-detail-content">
+        <PostItem 
+          post={post} 
+          company={company} 
+          user={user} 
+          onLoginRequest={onLoginRequest}
+        />
+      </main>
+    </div>
+  );
+};
+// ---------------- PROFILE PAGE ----------------
 interface ProfilePageProps {
   company: Company;
-  onSelectPost: (post: Post) => void;
+  onSelectPost: (post: Post, company: Company) => void;
   user?: User;
-  onLoginRequest?: () => void; // ✅ Add login request callback
+  onLoginRequest?: () => void;
 }
 
 const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePageProps) => {
@@ -4364,6 +3808,9 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
     parseInt(company.followers) || 0
   );
   const [isFollowing, setIsFollowing] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [showPostDetail, setShowPostDetail] = useState(false);
+  const [showPostsGrid, setShowPostsGrid] = useState(false);
 
   useEffect(() => {
     const checkFollowStatus = async () => {
@@ -4397,7 +3844,26 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
         const postsData = await postsRes.json();
         const productsData = await productsRes.json();
 
-        setPosts(postsData.posts || []);
+        // Process posts to ensure they have proper image URLs and company data
+        const processedPosts = (postsData.posts || []).map((post: Post) => ({
+          ...post,
+          _id: post._id || `post-${Math.random()}`,
+          imageUrl: post.mediaUrl || post.imageUrl || `https://picsum.photos/600/400?random=${post._id}`,
+          mediaUrl: post.mediaUrl || post.imageUrl,
+          likes: post.likes || 0,
+          comments: post.comments || 0,
+          // Add company data to each post for PostGridItem
+          company: {
+            _id: company._id,
+            name: company.name,
+            username: company.name.toLowerCase().replace(/[\s.]/g, "_"),
+            logoUrl: company.logoUrl,
+            businessName: company.name
+          }
+        }));
+
+        console.log("Processed posts:", processedPosts);
+        setPosts(processedPosts);
         setProducts(productsData.products || []);
         setError("");
       } catch (err) {
@@ -4413,7 +3879,6 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
 
   const handleFollow = async () => {
     if (!user?._id) {
-      // ✅ Directly open login modal without any message
       if (onLoginRequest) {
         onLoginRequest();
       }
@@ -4433,6 +3898,113 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
       }
     } catch (err: any) {
       console.error(err);
+    }
+  };
+
+  const handlePostImageClick = (post: Post) => {
+    console.log("Post image clicked:", post._id);
+    setSelectedPost(post);
+    setShowPostDetail(true);
+  };
+
+  const handleClosePostDetail = () => {
+    setShowPostDetail(false);
+    setSelectedPost(null);
+  };
+
+  const handleShowPostsGrid = () => {
+    setShowPostsGrid(true);
+  };
+
+  const handleHidePostsGrid = () => {
+    setShowPostsGrid(false);
+  };
+
+  // Post engagement handlers
+  const handleLike = async (postId: string, postIndex: number) => {
+    if (!user?._id) {
+      return;
+    }
+
+    try {
+      const updatedPosts = [...posts];
+      const post = updatedPosts[postIndex];
+      const newLikeStatus = !post.isLiked;
+      const newLikesCount = newLikeStatus ? post.likes + 1 : post.likes - 1;
+
+      // Optimistic update
+      updatedPosts[postIndex] = {
+        ...post,
+        isLiked: newLikeStatus,
+        likes: newLikesCount
+      };
+      setPosts(updatedPosts);
+
+      await axios.post(`https://api.zooda.in/api/post/${postId}/like`, {
+        userId: user._id,
+      });
+
+    } catch (err: any) {
+      // Revert on error
+      const revertedPosts = [...posts];
+      revertedPosts[postIndex] = {
+        ...revertedPosts[postIndex],
+        isLiked: !revertedPosts[postIndex].isLiked,
+        likes: revertedPosts[postIndex].isLiked 
+          ? revertedPosts[postIndex].likes - 1 
+          : revertedPosts[postIndex].likes + 1
+      };
+      setPosts(revertedPosts);
+      console.error("Error liking post:", err);
+    }
+  };
+
+  const handleComment = async (postId: string, postIndex: number, commentText: string) => {
+    if (!user?._id) {
+      return { success: false, error: "Please login to comment" };
+    }
+
+    if (!commentText.trim()) return { success: false, error: "Comment cannot be empty" };
+
+    try {
+      const response = await axios.post(
+        `https://api.zooda.in/api/post/${postId}/comment`,
+        {
+          text: commentText,
+          userId: user._id,
+        }
+      );
+
+      // Update comment count
+      const updatedPosts = [...posts];
+      updatedPosts[postIndex] = {
+        ...updatedPosts[postIndex],
+        comments: response.data.commentsCount
+      };
+      setPosts(updatedPosts);
+
+      return { success: true };
+    } catch (err: any) {
+      console.error("Error commenting:", err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  const handleShare = async (post: Post) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Check out this post',
+          text: post.content || 'Interesting post',
+          url: window.location.href,
+        });
+      } catch (err) {
+        console.log('Share cancelled');
+      }
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(window.location.href);
+      alert('Link copied to clipboard!');
     }
   };
 
@@ -4494,7 +4066,6 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
             >
               Visit site
             </a>
-            {/* ✅ Only show follow button if user is logged in */}
             {user?._id && (
               <button
                 className={`btn btn-solid ${isFollowing ? "following" : ""}`}
@@ -4525,33 +4096,130 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
         </nav>
 
         {loading ? (
-          <p className="text-center">Loading...</p>
+          <div className="loading-container">
+            <p>Loading content...</p>
+          </div>
         ) : error ? (
-          <p className="text-center text-red-500">{error}</p>
+          <div className="error-container">
+            <p className="text-red-500">{error}</p>
+          </div>
         ) : (
           <>
             {activeTab === "Posts" && (
-              <section className="content-grid">
-                {filteredPosts.length > 0 ? (
-                  filteredPosts.map((post) => (
-                    <div
-                      key={post._id}
-                      className="grid-item"
-                      onClick={() => onSelectPost(post)}
-                      role="button"
-                    >
-                      <img src={`${post.mediaUrl}`} alt={post.caption} />
+              <>
+                {showPostDetail && selectedPost ? (
+                  <div className="post-detail-overlay">
+                    <div className="post-detail-container">
+                      <button 
+                        className="close-post-detail"
+                        onClick={handleClosePostDetail}
+                      >
+                        <span className="material-icons">close</span>
+                      </button>
+                      <div className="post-detail-content">
+                        <PostGridItem
+                          post={selectedPost}
+                          postIndex={posts.findIndex(p => p._id === selectedPost._id)}
+                          onSelectPost={() => {}}
+                          onLike={handleLike}
+                          onComment={handleComment}
+                          onShare={handleShare}
+                          user={user}
+                          onLoginRequest={onLoginRequest}
+                        />
+                      </div>
                     </div>
-                  ))
+                  </div>
+                ) : showPostsGrid ? (
+                  <div className="posts-grid-view">
+                    <div className="posts-grid-header">
+                      <button 
+                        className="back-to-images-btn"
+                        onClick={handleHidePostsGrid}
+                      >
+                        <span className="material-icons">arrow_back</span>
+                        Back to Images
+                      </button>
+                      <h3>All Posts</h3>
+                    </div>
+                    <div className="posts-feed">
+                      {filteredPosts.length > 0 ? (
+                        filteredPosts.map((post, index) => (
+                          <PostGridItem
+                            key={post._id}
+                            post={post}
+                            postIndex={index}
+                            onSelectPost={handlePostImageClick}
+                            onLike={handleLike}
+                            onComment={handleComment}
+                            onShare={handleShare}
+                            user={user}
+                            onLoginRequest={onLoginRequest}
+                          />
+                        ))
+                      ) : (
+                        <div className="no-posts">
+                          <p>No posts yet.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 ) : (
-                  <p className="text-center">No posts yet.</p>
+                  <div className="posts-images-view">
+                    <div className="images-grid">
+                      {filteredPosts.length > 0 ? (
+                        filteredPosts.map((post, index) => (
+                          <div 
+                            key={post._id} 
+                            className="post-image-item"
+                            onClick={() => handlePostImageClick(post)}
+                          >
+                            <img
+                              src={post.imageUrl || post.mediaUrl}
+                              alt={`Post by ${company.name}`}
+                              className="post-image"
+                              onError={(e) => {
+                                e.currentTarget.src = `https://picsum.photos/400/400?random=${post._id}`;
+                              }}
+                            />
+                            <div className="post-image-overlay">
+                              <div className="post-stats">
+                                <span className="stat">
+                                  <span className="material-icons">favorite</span>
+                                  {post.likes || 0}
+                                </span>
+                                <span className="stat">
+                                  <span className="material-icons">chat_bubble</span>
+                                  {post.comments || 0}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="no-posts">
+                          <p>No posts yet.</p>
+                        </div>
+                      )}
+                    </div>
+                    {filteredPosts.length > 0 && (
+                      <div className="view-all-posts-btn-container">
+                        <button 
+                          className="view-all-posts-btn"
+                          onClick={handleShowPostsGrid}
+                        >
+                          View All Posts
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
-              </section>
+              </>
             )}
 
             {activeTab === "Products" && (
               <>
-                <div className="product-tags flex gap-2 mb-4">
+                <div className="product-tags">
                   {productTags.map((tag) => (
                     <button
                       key={tag}
@@ -4573,20 +4241,27 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
                           href={product.productLink}
                           target="_blank"
                           rel="noopener noreferrer"
+                          className="product-link"
                         >
                           <img
-                            src={`${product.image.url}`}
+                            src={`${product.image?.url || product.imageUrl}`}
                             alt={product.name}
                             className="product-image"
+                            onError={(e) => {
+                              e.currentTarget.src = `https://picsum.photos/400/400?random=${product._id}`;
+                            }}
                           />
                           <div className="product-info">
+                            <p className="product-name">{product.name}</p>
                             <p className="product-price">₹{product.price}</p>
                           </div>
                         </a>
                       </div>
                     ))
                   ) : (
-                    <p className="text-center">No products yet.</p>
+                    <div className="empty-state">
+                      <p className="text-center">No products yet.</p>
+                    </div>
                   )}
                 </section>
               </>
@@ -4608,180 +4283,286 @@ const Footer = ({ companyName = "Your Company", logoUrl }: FooterProps) => {
   return (
     <footer className="footer">
       <div className="footer-container">
-        {/* First Row: Logo and Company Name */}
-        <div className="footer-row">
-          <div className="footer-brand">
-            {logoUrl ? (
-              <img src={logoUrl} alt={companyName} className="footer-logo" />
-            ) : (
-              <div className="footer-logo-placeholder">
-                {companyName.charAt(0)}
+        {/* Main Footer Content - Three Columns */}
+        <div className="footer-main">
+          {/* Left: Logo and Company Name */}
+          <div className="footer-left">
+            <div className="footer-brand">
+              {logoUrl ? (
+                <img src={logoUrl} alt={companyName} className="footer-logo" />
+              ) : (
+                <div className="footer-logo-placeholder">
+                  {companyName.charAt(0)}
+                </div>
+              )}
+              <span className="footer-company-name">{companyName}</span>
+            </div>
+          </div>
+
+          {/* Middle: Navigation Links */}
+          <div className="footer-middle">
+            <nav className="footer-links">
+              <a href="/" className="footer-link">Home</a>
+              <a href="/about" className="footer-link">About Us</a>
+              <a href="/posts" className="footer-link">Posts</a>
+              <a href="/contact" className="footer-link">Contact</a>
+            </nav>
+          </div>
+
+          {/* Right: Contact Details */}
+          <div className="footer-right">
+            <div className="footer-contact">
+              <div className="contact-item">
+                <span className="material-icons">email</span>
+                <span>contact@{companyName.toLowerCase().replace(/\s+/g, '')}.com</span>
               </div>
-            )}
-            <span className="footer-company-name">{companyName}</span>
-          </div>
-        </div>
-
-        {/* Second Row: Navigation Links */}
-        <div className="footer-row">
-          <nav className="footer-links">
-            <a href="/" className="footer-link">Home</a>
-            <a href="/about" className="footer-link">About Us</a>
-            <a href="/posts" className="footer-link">Posts</a>
-            <a href="/contact" className="footer-link">Contact</a>
-          </nav>
-        </div>
-
-        {/* Third Row: Contact Details */}
-        <div className="footer-row">
-          <div className="footer-contact">
-            <div className="contact-item">
-              <span className="material-icons">email</span>
-              <span>contact@{companyName.toLowerCase().replace(/\s+/g, '')}.com</span>
-            </div>
-            <div className="contact-item">
-              <span className="material-icons">phone</span>
-              <span>+1 (555) 123-4567</span>
-            </div>
-            <div className="contact-item">
-              <span className="material-icons">location_on</span>
-              <span>123 Business St, City, State 12345</span>
+              <div className="contact-item">
+                <span className="material-icons">phone</span>
+                <span>+1 (555) 123-4567</span>
+              </div>
+              <div className="contact-item">
+                <span className="material-icons">location_on</span>
+                <span>123 Business St, City, State 12345</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Copyright */}
-        <div className="footer-copyright">
-          <p>&copy; {currentYear} {companyName}. All rights reserved.</p>
+        {/* Bottom Section: Business Registration Link and Copyright */}
+        <div className="footer-bottom">
+          <div className="footer-business">
+            <a 
+              href="https://client.zooda.in" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="business-registration-link"
+            >
+              Business Registration - client.zooda.in
+            </a>
+          </div>
+          <div className="footer-copyright">
+            <p>&copy; {currentYear} {companyName}. All rights reserved.</p>
+          </div>
         </div>
       </div>
     </footer>
   );
 };
-// Add the Footer CSS styles
 const footerStyles = `
-.app-footer {
+.footer {
   background: #000;
   border-top: 1px solid #222;
-  padding: 1.5rem 1rem;
+  padding: 2rem 1rem 1rem;
   margin-top: auto;
 }
 
-.footer-content {
+.footer-container {
   max-width: 1200px;
   margin: 0 auto;
+}
+
+/* Main Footer Layout - Three Columns */
+.footer-main {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+  margin-bottom: 2rem;
+}
+
+/* Left Section - Logo and Company Name */
+.footer-left {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  text-align: center;
+  justify-content: flex-start;
 }
 
 .footer-brand {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.75rem;
 }
 
 .footer-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.footer-logo-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #00ff99, #00ccff);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: #fff;
-  font-weight: 600;
+  justify-content: center;
+  color: #000;
+  font-weight: bold;
   font-size: 1.2rem;
 }
 
-.footer-logo .material-icons {
-  font-size: 1.5rem;
-  color: #00ff99;
-}
-
-.logo-text {
+.footer-company-name {
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.3rem;
   background: linear-gradient(135deg, #00ff99, #00ccff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  font-weight: 700;
+}
+
+/* Middle Section - Navigation Links */
+.footer-middle {
+  display: flex;
+  justify-content: center;
 }
 
 .footer-links {
   display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .footer-link {
   color: #ccc;
   text-decoration: none;
-  font-size: 0.9rem;
-  transition: color 0.2s ease;
-  padding: 0.5rem 0;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  padding: 0.25rem 0;
+  text-align: center;
 }
 
 .footer-link:hover {
   color: #00ff99;
+  transform: translateX(5px);
 }
 
-.footer-link.active {
-  color: #00ff99;
-  font-weight: 600;
+/* Right Section - Contact Details */
+.footer-right {
+  display: flex;
+  justify-content: flex-end;
 }
 
-.footer-business {
-  margin-top: 0.5rem;
+.footer-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #ccc;
+  font-size: 0.9rem;
+}
+
+.contact-item .material-icons {
+  font-size: 1.1rem;
+  color: #00ccff;
+}
+
+/* Bottom Section */
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1.5rem;
+  border-top: 1px solid #333;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .business-registration-link {
   color: #00ccff;
   text-decoration: none;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  padding: 0.5rem 1rem;
-  border: 1px solid #00ccff;
-  border-radius: 6px;
-  transition: all 0.2s ease;
+  padding: 0.6rem 1.2rem;
+  border: 2px solid #00ccff;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  background: transparent;
 }
 
 .business-registration-link:hover {
   background: #00ccff;
   color: #000;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 204, 255, 0.3);
+}
+
+.footer-copyright {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.footer-copyright p {
+  margin: 0;
 }
 
 /* Responsive Design */
-@media (min-width: 768px) {
-  .footer-content {
-    flex-direction: row;
-    justify-content: space-between;
-    text-align: left;
+@media (max-width: 768px) {
+  .footer-main {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    text-align: center;
   }
-  
+
+  .footer-left,
+  .footer-middle,
+  .footer-right {
+    justify-content: center;
+  }
+
+  .footer-brand {
+    justify-content: center;
+  }
+
   .footer-links {
-    gap: 2rem;
+    align-items: center;
   }
-  
-  .footer-business {
-    margin-top: 0;
+
+  .footer-contact {
+    align-items: center;
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .business-registration-link {
+    order: -1; /* Move business link to top on mobile */
   }
 }
 
 @media (max-width: 480px) {
-  .app-footer {
-    padding: 1rem 0.5rem;
+  .footer {
+    padding: 1.5rem 0.5rem 0.5rem;
   }
-  
-  .footer-links {
-    gap: 1rem;
+
+  .footer-company-name {
+    font-size: 1.1rem;
   }
-  
+
   .footer-link {
+    font-size: 0.9rem;
+  }
+
+  .contact-item {
     font-size: 0.85rem;
   }
-  
+
   .business-registration-link {
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .footer-copyright {
     font-size: 0.85rem;
-    padding: 0.4rem 0.8rem;
   }
 }
 `;
@@ -5377,14 +5158,54 @@ const RegisterModal = ({ isOpen, onClose, onRegister, onOpenLogin }: RegisterMod
   );
 };
 
+// ---------------- HASH ROUTER HOOK ----------------
+const useHashRouter = () => {
+  const [currentHash, setCurrentHash] = useState<string>(window.location.hash);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setCurrentHash(window.location.hash);
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const navigate = (hash: string) => {
+    window.location.hash = hash;
+  };
+
+  const getRouteParams = () => {
+    const hash = currentHash.replace('#', '');
+    
+    // Parse hash routes
+    if (hash.startsWith('company-')) {
+      return { type: 'company', id: hash.replace('company-', '') };
+    } else if (hash.startsWith('post-')) {
+      return { type: 'post', id: hash.replace('post-', '') };
+    } else if (hash === 'profile') {
+      return { type: 'profile' };
+    } else if (hash === 'posts') {
+      return { type: 'posts' };
+    } else if (hash === 'about') {
+      return { type: 'about' };
+    } else if (hash === 'search') {
+      return { type: 'search' };
+    } else {
+      return { type: 'home' };
+    }
+  };
+
+  return {
+    currentHash,
+    navigate,
+    routeParams: getRouteParams()
+  };
+};
+
 // ---------------- MAIN APP COMPONENT ----------------
 const App = () => {
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
-  const [selectedPost, setSelectedPost] = useState<{
-    post: Post;
-    company: Company;
-  } | null>(null);
-  const [activePage, setActivePage] = useState("Home");
+  const { currentHash, navigate, routeParams } = useHashRouter();
   const [user, setUser] = useState<User | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -5393,9 +5214,18 @@ const App = () => {
   const [allCompanies, setAllCompanies] = useState<Company[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [allPromotions, setAllPromotions] = useState<Promotion[]>([]);
-  const [isSearchActive, setIsSearchActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
+  
+  // Add selectedPost state to store both post and company data
+  const [selectedPost, setSelectedPost] = useState<{ post: Post; company: Company } | null>(null);
+
+  // Route state derived from hash
+  const isSearchActive = routeParams.type === 'search';
+  const selectedCompanyId = routeParams.type === 'company' ? routeParams.id : null;
+  const selectedPostId = routeParams.type === 'post' ? routeParams.id : null;
+  
+  const selectedCompany = allCompanies.find(c => c._id === selectedCompanyId) || null;
 
   // Load user from localStorage
   useEffect(() => {
@@ -5419,6 +5249,62 @@ const App = () => {
 
     loadAllPromotions();
   }, []);
+
+  // Reset selectedPost when navigating away from post
+  useEffect(() => {
+    if (routeParams.type !== 'post') {
+      setSelectedPost(null);
+    }
+  }, [routeParams.type]);
+
+  // Load post data when post hash changes
+  useEffect(() => {
+    const loadPostData = async () => {
+      if (selectedPostId && !selectedPost) {
+        try {
+          console.log("Loading post data for:", selectedPostId);
+          // Fetch post details
+          const postResponse = await axios.get(`${API_BASE_URL}/api/post/${selectedPostId}`);
+          if (postResponse.data.success) {
+            const post = postResponse.data.post;
+            console.log("Post data loaded:", post);
+            
+            // Fetch company details for the post
+            let company: Company;
+            if (post.businessId) {
+              const companyResponse = await axios.get(`${API_BASE_URL}/api/companies/${post.businessId}`);
+              company = companyResponse.data.company;
+            } else {
+              // Fallback company data
+              company = {
+                _id: 'unknown',
+                rank: 0,
+                name: 'Unknown Business',
+                description: '',
+                followers: '0',
+                trend: '',
+                siteUrl: '#',
+                logoUrl: '',
+                posts: [],
+                postCategories: [],
+                products: [],
+                productCategories: [],
+                engagementRate: '0.0'
+              };
+            }
+            
+            setSelectedPost({ post, company });
+          }
+        } catch (err) {
+          console.error("Error loading post data:", err);
+        }
+      }
+    };
+
+    if (selectedPostId) {
+      loadPostData();
+    }
+  }, [selectedPostId]);
 
   // Load all companies and products for search
   useEffect(() => {
@@ -5578,40 +5464,26 @@ const App = () => {
 
   const handleSelectSearchResult = (result: SearchResult) => {
     if (result.type === "company") {
-      const company = allCompanies.find((c) => c._id === result.id);
-      if (company) {
-        setSelectedCompany(company);
-        setActivePage("Home");
-        setSelectedPost(null);
-        setIsSearchActive(false);
-      }
+      navigate(`#company-${result.id}`);
     } else if (result.type === "product" && result.companyId) {
-      const company = allCompanies.find((c) => c._id === result.companyId);
-      if (company) {
-        setSelectedCompany(company);
-        setActivePage("Home");
-        setSelectedPost(null);
-        setIsSearchActive(false);
-        setTimeout(() => {
-          const productsTab = document.querySelector(
-            '.tab[data-tab="Products"]'
-          ) as HTMLElement;
-          if (productsTab) productsTab.click();
-        }, 100);
-      }
+      navigate(`#company-${result.companyId}`);
+      setTimeout(() => {
+        const productsTab = document.querySelector(
+          '.tab[data-tab="Products"]'
+        ) as HTMLElement;
+        if (productsTab) productsTab.click();
+      }, 100);
     }
   };
 
   const handleSearchClick = () => {
-    setIsSearchActive(true);
+    navigate('#search');
     setSearchQuery("");
     setSearchResults([]);
   };
 
   const handleSearchBack = () => {
-    setIsSearchActive(false);
-    setSearchQuery("");
-    setSearchResults([]);
+    window.history.back();
   };
 
   const handleLogin = (userData: User) => {
@@ -5626,22 +5498,31 @@ const App = () => {
     setUser(null);
     localStorage.removeItem("user");
     localStorage.removeItem("authToken");
-    handleNavClick("Home");
+    navigate('#home');
   };
 
   const handleNavClick = (page: string) => {
-    setActivePage(page);
-    setSelectedCompany(null);
-    setSelectedPost(null);
-    setIsSearchActive(false);
+    switch (page) {
+      case "Home":
+        navigate('#home');
+        break;
+      case "Profile":
+        navigate('#profile');
+        break;
+      case "Posts":
+        navigate('#posts');
+        break;
+      case "About":
+        navigate('#about');
+        break;
+      default:
+        navigate('#home');
+    }
   };
 
   const handleProfileClick = () => {
     if (user?.isLoggedIn) {
-      setActivePage("Profile");
-      setSelectedCompany(null);
-      setSelectedPost(null);
-      setIsSearchActive(false);
+      navigate('#profile');
     } else {
       setShowLoginModal(true);
     }
@@ -5649,6 +5530,17 @@ const App = () => {
 
   const handleMenuToggle = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const handleSelectCompany = (company: Company) => {
+    navigate(`#company-${company._id}`);
+  };
+
+  // Updated handleSelectPost to store both post and company data
+  const handleSelectPost = (post: Post, company: Company) => {
+    console.log("Selecting post:", post._id, "from company:", company._id);
+    setSelectedPost({ post, company });
+    navigate(`#post-${post._id}`);
   };
 
   const handleClaimOffer = (promotion: Promotion) => {
@@ -5670,18 +5562,18 @@ const App = () => {
   const renderHeader = () => {
     if (isSearchActive) return null;
 
-    if (selectedPost)
-      return <Header title="Post" onBack={() => setSelectedPost(null)} />;
+    if (selectedPostId)
+      return <Header title="Post" onBack={() => window.history.back()} />;
     if (selectedCompany)
-      return <Header title="Profile" onBack={() => setSelectedCompany(null)} />;
-    if (activePage === "Profile")
+      return <Header title="Profile" onBack={() => window.history.back()} />;
+    if (routeParams.type === "profile")
       return (
-        <Header title="My Profile" onBack={() => handleNavClick("Home")} />
+        <Header title="My Profile" onBack={() => window.history.back()} />
       );
-    if (activePage === "About")
-      return <Header title="About Us" onBack={() => handleNavClick("Home")} />;
-    if (activePage === "Posts")
-      return <Header title="Posts" onBack={() => handleNavClick("Home")} />;
+    if (routeParams.type === "about")
+      return <Header title="About Us" onBack={() => window.history.back()} />;
+    if (routeParams.type === "posts")
+      return <Header title="Posts" onBack={() => window.history.back()} />;
 
     return (
       <Header
@@ -5698,6 +5590,8 @@ const App = () => {
   };
 
   const renderPage = () => {
+    console.log("Current route:", routeParams.type, "selectedPostId:", selectedPostId, "selectedPost:", selectedPost);
+    
     if (isSearchActive) {
       return (
         <SearchPage
@@ -5711,34 +5605,44 @@ const App = () => {
       );
     }
 
-    if (selectedPost)
-      return (
-        <PostDetailPage
-          data={selectedPost}
-          onBack={() => setSelectedPost(null)}
-          user={user || undefined}
-        />
-      );
+    if (selectedPostId) {
+      if (selectedPost) {
+        return (
+          <PostDetailPage
+            data={selectedPost}
+            onBack={() => window.history.back()}
+            user={user || undefined}
+            onLoginRequest={() => setShowLoginModal(true)}
+          />
+        );
+      } else {
+        return (
+          <div className="loading-container">
+            <p>Loading post...</p>
+          </div>
+        );
+      }
+    }
 
-    if (selectedCompany)
+    if (selectedCompany) {
       return (
         <ProfilePage
           company={selectedCompany}
-          onSelectPost={(post) =>
-            setSelectedPost({ post, company: selectedCompany })
-          }
+          onSelectPost={handleSelectPost}
           user={user || undefined}
+          onLoginRequest={() => setShowLoginModal(true)}
         />
       );
+    }
 
-    switch (activePage) {
-      case "Profile":
+    switch (routeParams.type) {
+      case "profile":
         if (user) {
           return (
             <UserProfilePage
               user={user}
-              onBack={() => handleNavClick("Home")}
-              onSelectCompany={(company) => setSelectedCompany(company)}
+              onBack={() => window.history.back()}
+              onSelectCompany={handleSelectCompany}
               onLogout={handleLogout}
               allCompanies={allCompanies}
             />
@@ -5751,44 +5655,25 @@ const App = () => {
           );
         }
 
-      case "Posts":
+      case "posts":
         return (
           <AllPostsPage
-            onSelectPost={(post) => {
-              const company = allCompanies.find(
-                (c) => c._id === post.businessId
-              );
-              const minimalCompany: Company = {
-                _id: post.businessId || "unknown",
-                rank: 0,
-                name: company?.name || "Company",
-                description: company?.description || "",
-                followers: company?.followers || "0",
-                trend: "",
-                siteUrl: company?.siteUrl || "#",
-                logoUrl: company?.logoUrl || "",
-                posts: [],
-                postCategories: [],
-                products: [],
-                productCategories: [],
-                engagementRate: company?.engagementRate || "0.0",
-              };
-              setSelectedPost({ post, company: minimalCompany });
-            }}
+            onSelectPost={handleSelectPost}
             user={user || undefined}
+            onLoginRequest={() => setShowLoginModal(true)}
           />
         );
 
-      case "About":
+      case "about":
         return <AboutPage />;
 
-      case "Home":
+      case "home":
       default:
         return (
           <>
             <Banner />
             <CompanyListPage
-              onSelectCompany={(company) => setSelectedCompany(company)}
+              onSelectCompany={handleSelectCompany}
               user={user || undefined}
               allPromotions={allPromotions}
               onClaimOffer={handleClaimOffer}
@@ -5805,22 +5690,22 @@ const App = () => {
       {!isSearchActive && (
         <nav className="app-nav mobile-only">
           <a
-            href="#"
-            className={`nav-item ${activePage === "Home" ? "active" : ""}`}
+            href="#home"
+            className={`nav-item ${routeParams.type === "home" ? "active" : ""}`}
             onClick={(e) => {
               e.preventDefault();
-              handleNavClick("Home");
+              navigate('#home');
             }}
           >
             <span className="material-icons">home</span>
             <span className="nav-text">Home</span>
           </a>
           <a
-            href="#"
-            className={`nav-item ${activePage === "Posts" ? "active" : ""}`}
+            href="#posts"
+            className={`nav-item ${routeParams.type === "posts" ? "active" : ""}`}
             onClick={(e) => {
               e.preventDefault();
-              handleNavClick("Posts");
+              navigate('#posts');
             }}
           >
             <span className="material-icons">article</span>
@@ -5828,8 +5713,8 @@ const App = () => {
           </a>
           {user && (
             <a
-              href="#"
-              className={`nav-item ${activePage === "Profile" ? "active" : ""}`}
+              href="#profile"
+              className={`nav-item ${routeParams.type === "profile" ? "active" : ""}`}
               onClick={(e) => {
                 e.preventDefault();
                 handleProfileClick();
@@ -5848,7 +5733,7 @@ const App = () => {
         <MobileMenu
           isOpen={isMobileMenuOpen}
           onClose={() => setIsMobileMenuOpen(false)}
-          activePage={activePage}
+          activePage={routeParams.type}
           onNavClick={handleNavClick}
           user={user || undefined}
           onLogin={() => {
