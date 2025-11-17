@@ -1861,3 +1861,206 @@ body {
   font-size: 12px;
   font-weight: 500;
 }
+/* Action Error Styles */
+.action-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  color: #856404;
+  padding: 12px 16px;
+  margin: 16px 0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.login-link-btn {
+  background: #0095f6;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-left: 12px;
+  transition: background-color 0.2s;
+}
+
+.login-link-btn:hover {
+  background: #0081d6;
+}
+
+/* Profile specific styles */
+.profile-divider {
+  margin: 20px 0;
+  border: none;
+  border-top: 1px solid #e0e0e0;
+}
+
+.profile-tabs {
+  margin-bottom: 20px;
+}
+/* Footer Styles */
+.footer {
+  background: #1a1a1a;
+  color: #ffffff;
+  padding: 40px 0 20px;
+  margin-top: auto;
+}
+
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.footer-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+/* First Row: Brand */
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.footer-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.footer-logo-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #0095f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.footer-company-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* Second Row: Navigation Links */
+.footer-links {
+  display: flex;
+  gap: 40px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.footer-link {
+  color: #cccccc;
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 500;
+  transition: color 0.3s ease;
+  padding: 8px 0;
+}
+
+.footer-link:hover {
+  color: #0095f6;
+}
+
+/* Third Row: Contact Details */
+.footer-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #cccccc;
+  font-size: 14px;
+}
+
+.contact-item .material-icons {
+  font-size: 16px;
+  color: #0095f6;
+}
+
+/* Copyright */
+.footer-copyright {
+  text-align: center;
+  padding-top: 20px;
+  border-top: 1px solid #333;
+  margin-top: 20px;
+}
+
+.footer-copyright p {
+  color: #999;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .footer {
+    padding: 30px 0 15px;
+  }
+
+  .footer-row {
+    margin-bottom: 25px;
+  }
+
+  .footer-links {
+    gap: 25px;
+  }
+
+  .footer-link {
+    font-size: 14px;
+  }
+
+  .footer-company-name {
+    font-size: 20px;
+  }
+
+  .footer-contact {
+    gap: 10px;
+  }
+
+  .contact-item {
+    font-size: 13px;
+  }
+
+  .contact-item .material-icons {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer-links {
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+  }
+
+  .footer-contact {
+    text-align: center;
+  }
+
+  .contact-item {
+    justify-content: center;
+  }
+}

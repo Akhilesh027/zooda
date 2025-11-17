@@ -142,9 +142,6 @@ interface Promotion {
 
 const API_BASE_URL = "https://api.zooda.in";
 
-// Updated API Service for Promotions
-
-// Update the API service to handle the new response structure
 const getActivePromotions = async (): Promise<Promotion[]> => {
   try {
     const response = await axios.get(`https://api.zooda.in/api/promotion`);
@@ -187,7 +184,6 @@ const trackPromotionEvent = async (
   }
 };
 
-// ---------------- PROMOTION COMPONENTS ----------------
 interface PromotionBannerProps {
   promotion: Promotion;
   onClose?: () => void;
@@ -1696,7 +1692,6 @@ interface CompanyListItemProps {
   user?: User;
   onLoginClick?: () => void; // ✅ callback to open login form
 }
-
 const CompanyListItem = ({
   company,
   onSelectCompany,
@@ -1795,6 +1790,15 @@ const CompanyListItem = ({
     </article>
   );
 };
+
+interface CompanyListItemProps {
+  company: Company;
+  onSelectCompany: (company: Company) => void;
+  user?: User;
+  onLoginClick?: () => void; // ✅ callback to open login form
+}
+
+
 interface CompanyListPageProps {
   onSelectCompany: (company: Company) => void;
   user?: User;
@@ -1821,6 +1825,7 @@ const CompanyListPage = ({
   const [currentPopupPromotion, setCurrentPopupPromotion] =
     useState<Promotion | null>(null);
   const [usedPromotions, setUsedPromotions] = useState<string[]>([]);
+  const [showLoginModal, setShowLoginModal] = useState(false); // ✅ Add login modal state
 
   // ✅ Fetch categories from backend
   const fetchCategories = async () => {
@@ -2076,6 +2081,18 @@ const CompanyListPage = ({
     setSelectedSubcategory("All"); // Reset subcategory when category changes
   };
 
+  // ✅ Handle login request
+  const handleLoginRequest = () => {
+    setShowLoginModal(true);
+  };
+
+  // ✅ Handle successful login
+  const handleLoginSuccess = (userData: User) => {
+    setShowLoginModal(false);
+    // You might want to refresh follow status after login
+    // The follow status will automatically update when user data changes
+  };
+
   if (loading)
     return (
       <div className="app-center">
@@ -2084,110 +2101,125 @@ const CompanyListPage = ({
     );
 
   return (
-    <main className="company-list-container">
-      {/* Tabs */}
-      <div className="tabs-container">
-        <div className="tabs">
-          <button
-            className={`tab ${activeTab === "All Businesses" ? "active" : ""}`}
-            onClick={() => setActiveTab("All Businesses")}
-          >
-            All Businesses
-          </button>
-          <button
-            className={`tab ${activeTab === "Top Ranked" ? "active" : ""}`}
-            onClick={() => setActiveTab("Top Ranked")}
-          >
-            Top Ranked
-          </button>
-        </div>
-      </div>
-
-      <div className="filters-container">
-        <div className="filter-group">
-          <label htmlFor="category-select" className="filter-label">
-            Category:
-          </label>
-          <select
-            id="category-select"
-            value={selectedCategory}
-            onChange={handleCategoryChange}
-            className="filter-select"
-          >
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
+    <>
+      <main className="company-list-container">
+        {/* Tabs */}
+        <div className="tabs-container">
+          <div className="tabs">
+            <button
+              className={`tab ${activeTab === "All Businesses" ? "active" : ""}`}
+              onClick={() => setActiveTab("All Businesses")}
+            >
+              All Businesses
+            </button>
+            <button
+              className={`tab ${activeTab === "Top Ranked" ? "active" : ""}`}
+              onClick={() => setActiveTab("Top Ranked")}
+            >
+              Top Ranked
+            </button>
+          </div>
         </div>
 
-        {/* Subcategory dropdown */}
-        {subcategories.length > 1 && (
+        <div className="filters-container">
           <div className="filter-group">
-            <label htmlFor="subcategory-select" className="filter-label">
-              Subcategory:
+            <label htmlFor="category-select" className="filter-label">
+              Category:
             </label>
             <select
-              id="subcategory-select"
-              value={selectedSubcategory}
-              onChange={(e) => setSelectedSubcategory(e.target.value)}
+              id="category-select"
+              value={selectedCategory}
+              onChange={handleCategoryChange}
               className="filter-select"
             >
-              {subcategories.map((sub) => (
-                <option key={sub} value={sub}>
-                  {sub}
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
                 </option>
               ))}
             </select>
           </div>
-        )}
-      </div>
 
-      {/* Company List + Banners */}
-      <div className="company-cards-grid">
-        {zigzagContent.length > 0 ? (
-          zigzagContent.map((item, index) => {
-            if ("rank" in item) {
-              return (
-                <div key={`company-${item._id}-${index}`} className="company-card-wrapper">
-                  <CompanyListItem
-                    company={{
-                      ...item,
-                      engagementRate: (item.engagementRate as number).toFixed(1),
-                    }}
-                    onSelectCompany={onSelectCompany}
-                    user={user}
-                  />
-                </div>
-              );
-            } else {
-              return (
-                <div key={`banner-${item._id}-${index}`} className="banner-card-wrapper">
-                  <PromotionBanner
-                    promotion={item as Promotion}
-                    onClaimOffer={onClaimOffer}
-                  />
-                </div>
-              );
-            }
-          })
-        ) : (
-          <div className="no-companies-message">
-            No businesses found for selected filters.
-          </div>
-        )}
-      </div>
+          {/* Subcategory dropdown */}
+          {subcategories.length > 1 && (
+            <div className="filter-group">
+              <label htmlFor="subcategory-select" className="filter-label">
+                Subcategory:
+              </label>
+              <select
+                id="subcategory-select"
+                value={selectedSubcategory}
+                onChange={(e) => setSelectedSubcategory(e.target.value)}
+                className="filter-select"
+              >
+                {subcategories.map((sub) => (
+                  <option key={sub} value={sub}>
+                    {sub}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
 
-      {/* Popup Promotion */}
-      {showPromotionPopup && currentPopupPromotion && (
-        <PromotionPopup
-          promotion={currentPopupPromotion}
-          onClose={handleClosePopup}
-          onClaimOffer={handleClaimOfferFromPopup}
-        />
-      )}
-    </main>
+        {/* Company List + Banners */}
+        <div className="company-cards-grid">
+          {zigzagContent.length > 0 ? (
+            zigzagContent.map((item, index) => {
+              if ("rank" in item) {
+                return (
+                  <div key={`company-${item._id}-${index}`} className="company-card-wrapper">
+                    <CompanyListItem
+                      company={{
+                        ...item,
+                        engagementRate: (item.engagementRate as number).toFixed(1),
+                      }}
+                      onSelectCompany={onSelectCompany}
+                      user={user}
+                      onLoginClick={handleLoginRequest} // ✅ Pass login handler
+                    />
+                  </div>
+                );
+              } else {
+                return (
+                  <div key={`banner-${item._id}-${index}`} className="banner-card-wrapper">
+                    <PromotionBanner
+                      promotion={item as Promotion}
+                      onClaimOffer={onClaimOffer}
+                    />
+                  </div>
+                );
+              }
+            })
+          ) : (
+            <div className="no-companies-message">
+              No businesses found for selected filters.
+            </div>
+          )}
+        </div>
+
+        {/* Popup Promotion */}
+        {showPromotionPopup && currentPopupPromotion && (
+          <PromotionPopup
+            promotion={currentPopupPromotion}
+            onClose={handleClosePopup}
+            onClaimOffer={handleClaimOfferFromPopup}
+          />
+        )}
+      </main>
+
+      {/* ✅ Login Modal */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLogin={handleLoginSuccess}
+        onOpenRegister={() => {
+          // If you have a register modal, handle it here
+          setShowLoginModal(false);
+          // You can add your register modal opening logic here
+        }}
+      />
+    </>
   );
 };
 
@@ -2622,16 +2654,23 @@ const AboutPage = () => {
 interface AllPostsPageProps {
   onSelectPost: (post: Post) => void;
   user?: User;
+  onLoginRequest?: () => void; // Add this prop for login navigation
 }
 
-const AllPostsPage = ({ onSelectPost, user }: AllPostsPageProps) => {
+const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"Following" | "Unfollowing">("Following");
+  const [showLoginModal, setShowLoginModal] = useState(false); // Add state for login modal
 
   const fetchPosts = useCallback(async () => {
-    if (!user?._id) return;
+    if (!user?._id) {
+      setLoading(false);
+      setPosts([]);
+      return;
+    }
+    
     try {
       setLoading(true);
       setError("");
@@ -2685,7 +2724,7 @@ const AllPostsPage = ({ onSelectPost, user }: AllPostsPageProps) => {
                   // Generate username from businessName
                   if (company.businessName) {
                     company.username = company.businessName.toLowerCase().replace(/[\s.]/g, "_");
-                    company.name = company.businessName; // Add alias for frontend
+                    company.name = company.businessName;
                   }
                 }
               } catch (err) {
@@ -2742,10 +2781,23 @@ const AllPostsPage = ({ onSelectPost, user }: AllPostsPageProps) => {
     }
   }, [user?._id, activeTab]);
 
+  // Handle login request - open modal
+  const handleLoginRequest = () => {
+    setShowLoginModal(true);
+  };
+
+  // Handle successful login
+  const handleLoginSuccess = (userData: User) => {
+    setShowLoginModal(false);
+    // You might want to refresh posts after login
+    if (userData._id) {
+      fetchPosts();
+    }
+  };
+
   const handleLike = async (postId: string, postIndex: number) => {
     if (!user?._id) {
-      alert("Please login to like posts");
-      return;
+      return; // Will be handled in PostGridItem with login prompt
     }
 
     try {
@@ -2783,11 +2835,10 @@ const AllPostsPage = ({ onSelectPost, user }: AllPostsPageProps) => {
 
   const handleComment = async (postId: string, postIndex: number, commentText: string) => {
     if (!user?._id) {
-      alert("Please login to comment");
-      return;
+      return { success: false, error: "Please login to comment" };
     }
 
-    if (!commentText.trim()) return;
+    if (!commentText.trim()) return { success: false, error: "Comment cannot be empty" };
 
     try {
       const response = await axios.post(
@@ -2835,6 +2886,52 @@ const AllPostsPage = ({ onSelectPost, user }: AllPostsPageProps) => {
     fetchPosts();
   }, [fetchPosts, activeTab]);
 
+  // Show login prompt when user is not logged in
+  if (!user?._id) {
+    return (
+      <>
+        <div className="app-center login-prompt">
+          <div className="login-prompt-content">
+            <h2>Join the Community</h2>
+            <p>Login to see posts from businesses you follow and discover new ones!</p>
+            <button 
+              onClick={handleLoginRequest} 
+              className="login-btn-primary"
+            >
+              Login to Continue
+            </button>
+            <div className="login-features">
+              <div className="feature">
+                <span className="material-icons">favorite</span>
+                <span>Like and save your favorite posts</span>
+              </div>
+              <div className="feature">
+                <span className="material-icons">chat</span>
+                <span>Join conversations with comments</span>
+              </div>
+              <div className="feature">
+                <span className="material-icons">business</span>
+                <span>Discover new businesses to follow</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Login Modal */}
+        <LoginModal
+          isOpen={showLoginModal}
+          onClose={() => setShowLoginModal(false)}
+          onLogin={handleLoginSuccess}
+          onOpenRegister={() => {
+            // If you have a register modal, handle it here
+            setShowLoginModal(false);
+            // You can add your register modal opening logic here
+          }}
+        />
+      </>
+    );
+  }
+
   if (loading)
     return (
       <div className="app-center">
@@ -2855,43 +2952,58 @@ const AllPostsPage = ({ onSelectPost, user }: AllPostsPageProps) => {
     );
 
   return (
-    <main className="all-posts-page">
-      <div className="tabs-container">
-        <div className="tabs">
-          <button
-            className={`tab ${activeTab === "Following" ? "active" : ""}`}
-            onClick={() => setActiveTab("Following")}
-          >
-            Following
-          </button>
-          <button
-            className={`tab ${activeTab === "Unfollowing" ? "active" : ""}`}
-            onClick={() => setActiveTab("Unfollowing")}
-          >
-            Unfollowing
-          </button>
+    <>
+      <main className="all-posts-page">
+        <div className="tabs-container">
+          <div className="tabs">
+            <button
+              className={`tab ${activeTab === "Following" ? "active" : ""}`}
+              onClick={() => setActiveTab("Following")}
+            >
+              Following
+            </button>
+            <button
+              className={`tab ${activeTab === "Unfollowing" ? "active" : ""}`}
+              onClick={() => setActiveTab("Unfollowing")}
+            >
+              Unfollowing
+            </button>
+          </div>
         </div>
-      </div>
 
-      {posts.length === 0 ? (
-        <div className="no-posts">No {activeTab.toLowerCase()} posts found</div>
-      ) : (
-        <div className="posts-feed">
-          {posts.map((post, index) => (
-            <PostGridItem
-              key={post._id}
-              post={post}
-              postIndex={index}
-              onSelectPost={onSelectPost}
-              onLike={handleLike}
-              onComment={handleComment}
-              onShare={handleShare}
-              user={user}
-            />
-          ))}
-        </div>
-      )}
-    </main>
+        {posts.length === 0 ? (
+          <div className="no-posts">No {activeTab.toLowerCase()} posts found</div>
+        ) : (
+          <div className="posts-feed">
+            {posts.map((post, index) => (
+              <PostGridItem
+                key={post._id}
+                post={post}
+                postIndex={index}
+                onSelectPost={onSelectPost}
+                onLike={handleLike}
+                onComment={handleComment}
+                onShare={handleShare}
+                user={user}
+                onLoginRequest={handleLoginRequest}
+              />
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLogin={handleLoginSuccess}
+        onOpenRegister={() => {
+          // If you have a register modal, handle it here
+          setShowLoginModal(false);
+          // You can add your register modal opening logic here
+        }}
+      />
+    </>
   );
 };
 
@@ -2903,6 +3015,7 @@ interface PostGridItemProps {
   onComment: (postId: string, postIndex: number, commentText: string) => Promise<{success: boolean; error?: string}>;
   onShare: (post: Post) => void;
   user?: User;
+  onLoginRequest?: () => void;
 }
 
 const PostGridItem = ({ 
@@ -2912,7 +3025,8 @@ const PostGridItem = ({
   onLike, 
   onComment,
   onShare, 
-  user 
+  user,
+  onLoginRequest
 }: PostGridItemProps) => {
   const companyName = post.company?.businessName || post.company?.name || "Business Name";
   const companyUsername = post.company?.username || companyName.toLowerCase().replace(/[\s.]/g, "_");
@@ -2921,6 +3035,7 @@ const PostGridItem = ({
   const [showComments, setShowComments] = useState(false);
   const [postComments, setPostComments] = useState<Comment[]>([]);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [actionError, setActionError] = useState("");
 
   const formattedDate = new Date(
     post.createdAt || post.date
@@ -2931,6 +3046,11 @@ const PostGridItem = ({
   });
 
   const toggleComments = async () => {
+    if (!user?._id) {
+      setActionError("Please login to view comments");
+      return;
+    }
+
     if (!showComments && post._id) {
       try {
         const response = await axios.get(
@@ -2942,6 +3062,16 @@ const PostGridItem = ({
       }
     }
     setShowComments(!showComments);
+    setActionError("");
+  };
+
+  const handleLikeWithLoginCheck = () => {
+    if (!user?._id) {
+      setActionError("Please login to like posts");
+      return;
+    }
+    setActionError("");
+    onLike(post._id, postIndex);
   };
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
@@ -2949,6 +3079,7 @@ const PostGridItem = ({
     if (!commentText.trim() || !post._id) return;
 
     setIsSubmittingComment(true);
+    setActionError("");
     try {
       const result = await onComment(post._id, postIndex, commentText);
       if (result.success) {
@@ -2958,12 +3089,19 @@ const PostGridItem = ({
           `https://api.zooda.in/api/post/${post._id}/comments`
         );
         setPostComments(response.data.comments || []);
+      } else if (result.error) {
+        setActionError(result.error);
       }
     } catch (err) {
       console.error("Error submitting comment:", err);
+      setActionError("Failed to post comment");
     } finally {
       setIsSubmittingComment(false);
     }
+  };
+
+  const handleShareWithLoginCheck = () => {
+    onShare(post);
   };
 
   return (
@@ -3003,12 +3141,27 @@ const PostGridItem = ({
         />
       </div>
 
+      {/* Action Error Message */}
+      {actionError && (
+        <div className="action-error">
+          <span>{actionError}</span>
+          {onLoginRequest && (
+            <button 
+              onClick={onLoginRequest}
+              className="login-link-btn"
+            >
+              Login
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Engagement Section */}
       <div className="post-engagement">
         <div className="engagement-left">
           <button
             className={`like-btn ${post.isLiked ? 'liked' : ''}`}
-            onClick={() => onLike(post._id, postIndex)}
+            onClick={handleLikeWithLoginCheck}
           >
             <span className="material-icons">
               {post.isLiked ? "favorite" : "favorite_border"}
@@ -3022,12 +3175,11 @@ const PostGridItem = ({
           </button>
           <button 
             className="share-btn"
-            onClick={() => onShare(post)}
+            onClick={handleShareWithLoginCheck}
           >
             <span className="material-icons">send</span>
           </button>
         </div>
-      
       </div>
 
       {/* Post Stats and Content */}
@@ -3055,33 +3207,49 @@ const PostGridItem = ({
         {/* Comments Section */}
         {showComments && (
           <div className="comments-section">
-            {postComments.map((comment, index) => (
-              <div key={index} className="comment-item">
-                <strong className="comment-username">
-                  {comment.user?.name || 'User'}
-                </strong>
-                <span className="comment-text">{comment.text}</span>
+            {!user?._id ? (
+              <div className="login-prompt-comments">
+                <p>Please login to view and post comments</p>
+                {onLoginRequest && (
+                  <button 
+                    onClick={onLoginRequest}
+                    className="login-btn-small"
+                  >
+                    Login
+                  </button>
+                )}
               </div>
-            ))}
-            
-            {/* Comment Input */}
-            <form onSubmit={handleCommentSubmit} className="comment-form">
-              <input
-                type="text"
-                placeholder="Add a comment..."
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                className="comment-input"
-                disabled={isSubmittingComment}
-              />
-              <button
-                type="submit"
-                className="comment-submit-btn"
-                disabled={!commentText.trim() || isSubmittingComment}
-              >
-                {isSubmittingComment ? 'Posting...' : 'Post'}
-              </button>
-            </form>
+            ) : (
+              <>
+                {postComments.map((comment, index) => (
+                  <div key={index} className="comment-item">
+                    <strong className="comment-username">
+                      {comment.user?.name || 'User'}
+                    </strong>
+                    <span className="comment-text">{comment.text}</span>
+                  </div>
+                ))}
+                
+                {/* Comment Input */}
+                <form onSubmit={handleCommentSubmit} className="comment-form">
+                  <input
+                    type="text"
+                    placeholder="Add a comment..."
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    className="comment-input"
+                    disabled={isSubmittingComment || !user?._id}
+                  />
+                  <button
+                    type="submit"
+                    className="comment-submit-btn"
+                    disabled={!commentText.trim() || isSubmittingComment || !user?._id}
+                  >
+                    {isSubmittingComment ? 'Posting...' : 'Post'}
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         )}
 
@@ -3090,8 +3258,109 @@ const PostGridItem = ({
     </article>
   );
 };
-// Updated CSS with business logo support
 const styles = `
+/* Login Prompt Styles */
+.login-prompt {
+  text-align: center;
+  padding: 2rem;
+}
+
+.login-prompt-content h2 {
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.login-prompt-content p {
+  margin-bottom: 2rem;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.login-btn-primary {
+  background: #0095f6;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 2rem;
+}
+
+.login-btn-primary:hover {
+  background: #0081d6;
+}
+
+.login-features {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 300px;
+  margin: 0 auto;
+}
+
+.feature {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #555;
+}
+
+.feature .material-icons {
+  color: #0095f6;
+}
+
+/* Action Error Styles */
+.action-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  color: #856404;
+  padding: 8px 12px;
+  margin: 8px 0;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.login-link-btn {
+  background: none;
+  border: 1px solid #856404;
+  color: #856404;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.login-link-btn:hover {
+  background: #856404;
+  color: white;
+}
+
+/* Comments Login Prompt */
+.login-prompt-comments {
+  text-align: center;
+  padding: 1rem;
+  color: #666;
+}
+
+.login-btn-small {
+  background: #0095f6;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-top: 0.5rem;
+}
+
+.login-btn-small:hover {
+  background: #0081d6;
+}
 .all-posts-page {
   max-width: 614px;
   margin: 0 auto;
@@ -3446,9 +3715,10 @@ interface PostItemProps {
   post: Post;
   company: Company;
   user?: User;
+  onLoginRequest?: () => void; // ✅ Add login request callback
 }
 
-const PostItem = ({ post, company, user }: PostItemProps) => {
+const PostItem = ({ post, company, user, onLoginRequest }: PostItemProps) => {
   const companyUsername = company.name.toLowerCase().replace(/[\s.]/g, "_");
   const [likes, setLikes] = useState(post.likes || 0);
   const [comments, setComments] = useState(post.comments || 0);
@@ -3457,6 +3727,7 @@ const PostItem = ({ post, company, user }: PostItemProps) => {
   const [showComments, setShowComments] = useState(false);
   const [postComments, setPostComments] = useState<Comment[]>([]);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [actionError, setActionError] = useState(""); // ✅ Add error state for login prompts
 
   useEffect(() => {
     const checkLikeStatus = async () => {
@@ -3501,7 +3772,7 @@ const PostItem = ({ post, company, user }: PostItemProps) => {
 
   const handleLike = async () => {
     if (!user?._id) {
-      alert("Please login to like posts");
+      setActionError("Please login to like posts");
       return;
     }
 
@@ -3514,6 +3785,7 @@ const PostItem = ({ post, company, user }: PostItemProps) => {
       );
       setLikes(response.data.likesCount);
       setIsLiked(response.data.isLiked);
+      setActionError(""); // Clear any previous errors
     } catch (err) {
       console.error("Error liking post:", err);
     }
@@ -3524,11 +3796,12 @@ const PostItem = ({ post, company, user }: PostItemProps) => {
     if (!commentText.trim() || !post._id) return;
 
     if (!user?._id) {
-      alert("Please login to comment");
+      setActionError("Please login to comment");
       return;
     }
 
     setIsSubmittingComment(true);
+    setActionError(""); // Clear any previous errors
     try {
       const response = await axios.post(
         `${API_BASE_URL}/api/post/${post._id}/comment`,
@@ -3552,6 +3825,11 @@ const PostItem = ({ post, company, user }: PostItemProps) => {
   };
 
   const toggleComments = async () => {
+    if (!user?._id) {
+      setActionError("Please login to view comments");
+      return;
+    }
+
     if (!showComments && post._id) {
       try {
         const response = await axios.get(
@@ -3563,6 +3841,65 @@ const PostItem = ({ post, company, user }: PostItemProps) => {
       }
     }
     setShowComments(!showComments);
+    setActionError(""); // Clear error when toggling comments
+  };
+
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/post/${post._id}`;
+    const shareText = `Check out this post from ${company.name}: ${post.content || 'Interesting content'}`;
+
+    // Web Share API (for mobile devices)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${company.name} - Post`,
+          text: shareText,
+          url: shareUrl,
+        });
+        console.log('Share successful');
+      } catch (err) {
+        // User canceled the share
+        console.log('Share canceled');
+      }
+    } 
+    // Fallback for desktop browsers
+    else if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        // Show success message
+        setActionError("Link copied to clipboard! 📋");
+        setTimeout(() => setActionError(""), 3000); // Clear message after 3 seconds
+      } catch (err) {
+        // Fallback to old method
+        copyToClipboardFallback(shareUrl);
+      }
+    } else {
+      copyToClipboardFallback(shareUrl);
+    }
+  };
+
+  // Fallback copy method
+  const copyToClipboardFallback = (text: string) => {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      setActionError("Link copied to clipboard! 📋");
+      setTimeout(() => setActionError(""), 3000);
+    } catch (err) {
+      setActionError("Failed to copy link");
+      setTimeout(() => setActionError(""), 3000);
+    }
+    document.body.removeChild(textArea);
+  };
+
+  const handleLoginClick = () => {
+    if (onLoginRequest) {
+      onLoginRequest();
+      setActionError(""); // Clear error when login is initiated
+    }
   };
 
   return (
@@ -3591,6 +3928,21 @@ const PostItem = ({ post, company, user }: PostItemProps) => {
         />
       </div>
 
+      {/* Action Error Message */}
+      {actionError && (
+        <div className="action-error">
+          <span>{actionError}</span>
+          {actionError.includes("login") && onLoginRequest && (
+            <button 
+              onClick={handleLoginClick}
+              className="login-link-btn"
+            >
+              Login
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Engagement Section */}
       <div className="post-engagement">
         <div className="engagement-left">
@@ -3608,11 +3960,13 @@ const PostItem = ({ post, company, user }: PostItemProps) => {
           >
             <span className="material-icons">chat_bubble_outline</span>
           </button>
-          <button className="share-btn">
+          <button 
+            className="share-btn"
+            onClick={handleShare}
+          >
             <span className="material-icons">send</span>
           </button>
         </div>
-       
       </div>
 
       {/* Post Stats and Content */}
@@ -3640,33 +3994,49 @@ const PostItem = ({ post, company, user }: PostItemProps) => {
         {/* Comments Section */}
         {showComments && (
           <div className="comments-section">
-            {postComments.map((comment, index) => (
-              <div key={index} className="comment-item">
-                <strong className="comment-username">
-                  {comment.user?.name || 'User'}
-                </strong>
-                <span className="comment-text">{comment.text}</span>
+            {!user?._id ? (
+              <div className="login-prompt-comments">
+                <p>Please login to view and post comments</p>
+                {onLoginRequest && (
+                  <button 
+                    onClick={handleLoginClick}
+                    className="login-btn-small"
+                  >
+                    Login
+                  </button>
+                )}
               </div>
-            ))}
-            
-            {/* Comment Input */}
-            <form onSubmit={handleComment} className="comment-form">
-              <input
-                type="text"
-                placeholder="Add a comment..."
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                className="comment-input"
-                disabled={isSubmittingComment}
-              />
-              <button
-                type="submit"
-                className="comment-submit-btn"
-                disabled={!commentText.trim() || isSubmittingComment}
-              >
-                {isSubmittingComment ? 'Posting...' : 'Post'}
-              </button>
-            </form>
+            ) : (
+              <>
+                {postComments.map((comment, index) => (
+                  <div key={index} className="comment-item">
+                    <strong className="comment-username">
+                      {comment.user?.name || 'User'}
+                    </strong>
+                    <span className="comment-text">{comment.text}</span>
+                  </div>
+                ))}
+                
+                {/* Comment Input */}
+                <form onSubmit={handleComment} className="comment-form">
+                  <input
+                    type="text"
+                    placeholder="Add a comment..."
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    className="comment-input"
+                    disabled={isSubmittingComment || !user?._id}
+                  />
+                  <button
+                    type="submit"
+                    className="comment-submit-btn"
+                    disabled={!commentText.trim() || isSubmittingComment || !user?._id}
+                  >
+                    {isSubmittingComment ? 'Posting...' : 'Post'}
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         )}
 
@@ -3675,19 +4045,23 @@ const PostItem = ({ post, company, user }: PostItemProps) => {
     </article>
   );
 };
-
 // ---------------- POST DETAIL PAGE ----------------
 interface PostDetailPageProps {
   data: { post: Post; company: Company };
   onBack: () => void;
   user?: User;
+  onLoginRequest?: () => void; // ✅ Add login request callback
 }
 
-const PostDetailPage = ({ data, onBack, user }: PostDetailPageProps) => (
+const PostDetailPage = ({ data, onBack, user, onLoginRequest }: PostDetailPageProps) => (
   <div className="post-detail-page">
-   
     <main className="post-detail-content">
-      <PostItem post={data.post} company={data.company} user={user} />
+      <PostItem 
+        post={data.post} 
+        company={data.company} 
+        user={user} 
+        onLoginRequest={onLoginRequest} // ✅ Pass the login handler
+      />
     </main>
   </div>
 );
@@ -3969,21 +4343,16 @@ const additionalStyles = `
 const additionalStyleSheet = document.createElement("style");
 additionalStyleSheet.innerText = additionalStyles;
 document.head.appendChild(additionalStyleSheet);
-// ---------------- FOOTER COMPONENT ----------------
-interface FooterProps {
-  activePage: string;
-  onNavClick: (page: string) => void;
-  user?: User | null;
-}
 
 // ---------------- UPDATED PROFILE PAGE (PROMOTIONS REMOVED) ----------------
 interface ProfilePageProps {
   company: Company;
   onSelectPost: (post: Post) => void;
   user?: User;
+  onLoginRequest?: () => void; // ✅ Add login request callback
 }
 
-const ProfilePage = ({ company, onSelectPost, user }: ProfilePageProps) => {
+const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePageProps) => {
   const [activeTab, setActiveTab] = useState<"Posts" | "Products">("Posts");
   const [activePostCategory, setActivePostCategory] = useState("All");
   const [activeProductTag, setActiveProductTag] = useState("All");
@@ -4044,9 +4413,13 @@ const ProfilePage = ({ company, onSelectPost, user }: ProfilePageProps) => {
 
   const handleFollow = async () => {
     if (!user?._id) {
-      alert("Please login to follow companies");
+      // ✅ Directly open login modal without any message
+      if (onLoginRequest) {
+        onLoginRequest();
+      }
       return;
     }
+    
     try {
       const res = await axios.post(
         `${API_BASE_URL}/api/follow/${company._id}`,
@@ -4060,7 +4433,6 @@ const ProfilePage = ({ company, onSelectPost, user }: ProfilePageProps) => {
       }
     } catch (err: any) {
       console.error(err);
-      alert(err.response?.data?.message || "An error occurred");
     }
   };
 
@@ -4122,12 +4494,15 @@ const ProfilePage = ({ company, onSelectPost, user }: ProfilePageProps) => {
             >
               Visit site
             </a>
-            <button
-              className={`btn btn-solid ${isFollowing ? "following" : ""}`}
-              onClick={handleFollow}
-            >
-              {isFollowing ? "Unfollow" : "Follow"}
-            </button>
+            {/* ✅ Only show follow button if user is logged in */}
+            {user?._id && (
+              <button
+                className={`btn btn-solid ${isFollowing ? "following" : ""}`}
+                onClick={handleFollow}
+              >
+                {isFollowing ? "Unfollow" : "Follow"}
+              </button>
+            )}
           </div>
         </section>
 
@@ -4222,81 +4597,67 @@ const ProfilePage = ({ company, onSelectPost, user }: ProfilePageProps) => {
     </div>
   );
 };
+interface FooterProps {
+  companyName?: string;
+  logoUrl?: string;
+}
 
-const Footer = ({ activePage, onNavClick, user }: FooterProps) => {
+const Footer = ({ companyName = "Your Company", logoUrl }: FooterProps) => {
+  const currentYear = new Date().getFullYear();
+
   return (
-    <footer className="app-footer">
-      <div className="footer-content">
-        {/* Logo and Brand */}
-        <div className="footer-brand">
-          <div className="footer-logo">
-            <span className="material-icons">hub</span>
-            <span className="logo-text">Zetova</span>
+    <footer className="footer">
+      <div className="footer-container">
+        {/* First Row: Logo and Company Name */}
+        <div className="footer-row">
+          <div className="footer-brand">
+            {logoUrl ? (
+              <img src={logoUrl} alt={companyName} className="footer-logo" />
+            ) : (
+              <div className="footer-logo-placeholder">
+                {companyName.charAt(0)}
+              </div>
+            )}
+            <span className="footer-company-name">{companyName}</span>
           </div>
         </div>
 
-        {/* Navigation Links */}
-        <div className="footer-links">
-          <a 
-            href="#" 
-            className={`footer-link ${activePage === "Home" ? "active" : ""}`}
-            onClick={(e) => {
-              e.preventDefault();
-              onNavClick("Home");
-            }}
-          >
-            Home
-          </a>
-          <a 
-            href="#" 
-            className={`footer-link ${activePage === "About" ? "active" : ""}`}
-            onClick={(e) => {
-              e.preventDefault();
-              onNavClick("About");
-            }}
-          >
-            About Us
-          </a>
-          <a 
-            href="#" 
-            className={`footer-link ${activePage === "Posts" ? "active" : ""}`}
-            onClick={(e) => {
-              e.preventDefault();
-              onNavClick("Posts");
-            }}
-          >
-            Posts
-          </a>
-          {user && (
-            <a 
-              href="#" 
-              className={`footer-link ${activePage === "Profile" ? "active" : ""}`}
-              onClick={(e) => {
-                e.preventDefault();
-                onNavClick("Profile");
-              }}
-            >
-              Profile
-            </a>
-          )}
+        {/* Second Row: Navigation Links */}
+        <div className="footer-row">
+          <nav className="footer-links">
+            <a href="/" className="footer-link">Home</a>
+            <a href="/about" className="footer-link">About Us</a>
+            <a href="/posts" className="footer-link">Posts</a>
+            <a href="/contact" className="footer-link">Contact</a>
+          </nav>
         </div>
 
-        {/* Business Registration Link */}
-        <div className="footer-business">
-          <a 
-            href="https://client.zooda.in" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="business-registration-link"
-          >
-            Business Registration
-          </a>
+        {/* Third Row: Contact Details */}
+        <div className="footer-row">
+          <div className="footer-contact">
+            <div className="contact-item">
+              <span className="material-icons">email</span>
+              <span>contact@{companyName.toLowerCase().replace(/\s+/g, '')}.com</span>
+            </div>
+            <div className="contact-item">
+              <span className="material-icons">phone</span>
+              <span>+1 (555) 123-4567</span>
+            </div>
+            <div className="contact-item">
+              <span className="material-icons">location_on</span>
+              <span>123 Business St, City, State 12345</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Copyright */}
+        <div className="footer-copyright">
+          <p>&copy; {currentYear} {companyName}. All rights reserved.</p>
         </div>
       </div>
     </footer>
   );
 };
-
 // Add the Footer CSS styles
 const footerStyles = `
 .app-footer {
@@ -5432,7 +5793,7 @@ const App = () => {
               allPromotions={allPromotions}
               onClaimOffer={handleClaimOffer}
             />
-            
+            <Footer />
           </>
         );
     }
