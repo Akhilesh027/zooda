@@ -34,10 +34,10 @@ const storage = new CloudinaryStorage({
     transformation: [{ width: 800, height: 800, crop: "limit" }], // optional resizing
   },
 });
-
+//'mongodb+srv://akhileshreddy811_db_user:6MQywIJtJR8oLeCo@cluster0.t0i7d7t.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
 const upload = multer({ storage });
 
-mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://akhileshreddy811_db_user:6MQywIJtJR8oLeCo@cluster0.t0i7d7t.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0', {
+mongoose.connect(process.env.MONGODB_URI , {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
@@ -2157,7 +2157,7 @@ app.get("/api/user/:userId/following", async (req, res) => {
       
       // Ensure logo URL is properly formatted
       if (businessObj.logoUrl && !businessObj.logoUrl.startsWith("http")) {
-        businessObj.logoUrl = `${process.env.API_BASE_URL || 'http://localhost:5000'}${businessObj.logoUrl.startsWith("/") ? "" : "/"}${businessObj.logoUrl}`;
+        businessObj.logoUrl = `${process.env.API_BASE_URL || 'https://api.zooda.in'}${businessObj.logoUrl.startsWith("/") ? "" : "/"}${businessObj.logoUrl}`;
       }
 
       // Generate username from businessName
@@ -2371,7 +2371,7 @@ app.get("/api/posts/following/:userId", async (req, res) => {
       if (postObj.business && postObj.business.logoUrl) {
         let logoUrl = postObj.business.logoUrl;
         if (!logoUrl.startsWith("http")) {
-          logoUrl = `${process.env.API_BASE_URL || 'http://localhost:5000'}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
+          logoUrl = `${process.env.API_BASE_URL || 'https://api.zooda.in'}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
         }
         postObj.business.logoUrl = logoUrl;
       }
@@ -2450,7 +2450,7 @@ app.get("/api/posts/unfollowed/:userId", async (req, res) => {
       if (postObj.business && postObj.business.logoUrl) {
         let logoUrl = postObj.business.logoUrl;
         if (!logoUrl.startsWith("http")) {
-          logoUrl = `${process.env.API_BASE_URL || 'http://localhost:5000'}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
+          logoUrl = `${process.env.API_BASE_URL || 'https://api.zooda.in'}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
         }
         postObj.business.logoUrl = logoUrl;
       }
@@ -2663,7 +2663,6 @@ app.get('/api/admin/businesses', async (req, res) => {
     res.status(500).json({ message: 'Server error fetching businesses' });
   }
 });
-// --- PUT /api/admin/businesses/:businessId/approve ---
 app.put('/api/admin/businesses/:businessId/approve', async (req, res) => {
     try {
         const business = await Business.findByIdAndUpdate(

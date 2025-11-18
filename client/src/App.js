@@ -9,7 +9,7 @@ import {
 import { Trash2 } from "lucide-react";
 
 // --- CONFIGURATION ---
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'https://api.zooda.in/api';
 axios.defaults.baseURL = API_BASE_URL;
 axios.defaults.headers.common['Accept'] = 'application/json';
 
@@ -1158,7 +1158,7 @@ const PostsScreen = ({ business, currentUser, notify }) => {
     if (!confirmed) return;
 
     try {
-      await axios.delete(`http://localhost:5000/api/post/${postId}/comment/${commentId}`);
+      await axios.delete(`https://api.zooda.in/api/post/${postId}/comment/${commentId}`);
       notify("success", "Comment deleted.");
       fetchPosts();
     } catch (error) {
