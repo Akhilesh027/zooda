@@ -140,11 +140,11 @@ interface Promotion {
   updatedAt?: string;
 }
 
-const API_BASE_URL = "https://api.zooda.in";
+const API_BASE_URL = "http://localhost:5000";
 
 const getActivePromotions = async (): Promise<Promotion[]> => {
   try {
-    const response = await axios.get(`https://api.zooda.in/api/promotion`);
+    const response = await axios.get(`http://localhost:5000/api/promotion`);
 
     // Handle both response structures
     if (response.data.success && Array.isArray(response.data.data)) {
@@ -346,7 +346,7 @@ const SearchPage = ({
   }, []);
 
   const fetchBusinesses = async () => {
-    // Mock data for demonstration since the API call will likely fail in this environment
+    // Mock data for demo
     if (API_BASE_URL.includes("localhost")) {
       const mockData = [
         {
@@ -356,22 +356,8 @@ const SearchPage = ({
           businessCategory: "Groceries",
           logoUrl: "https://placehold.co/80x80/004d40/ffffff?text=ORG",
           products: [
-            {
-              _id: "p1",
-              name: "Organic Apples",
-              price: 150,
-              category: "Fruit",
-              tags: ["fresh", "fruit"],
-              image: { url: "https://placehold.co/300x200/ff4d4d/ffffff?text=Apple" },
-            },
-            {
-              _id: "p2",
-              name: "Whole Wheat Bread",
-              price: 80,
-              category: "Bakery",
-              tags: ["bread", "whole grain"],
-              image: { url: "https://placehold.co/300x200/ff9900/ffffff?text=Bread" },
-            },
+            { _id: "p1", name: "Organic Apples", price: 150, category: "Fruit", tags: ["fresh", "fruit"], image: { url: "https://placehold.co/300x200/ff4d4d/ffffff?text=Apple" } },
+            { _id: "p2", name: "Whole Wheat Bread", price: 80, category: "Bakery", tags: ["bread", "whole grain"], image: { url: "https://placehold.co/300x200/ff9900/ffffff?text=Bread" } },
           ],
         },
         {
@@ -381,22 +367,8 @@ const SearchPage = ({
           businessCategory: "Electronics",
           logoUrl: "https://placehold.co/80x80/333333/00ccff?text=TECH",
           products: [
-            {
-              _id: "p4",
-              name: "Wireless Mouse",
-              price: 599,
-              category: "Accessory",
-              tags: ["computer", "office"],
-              image: { url: "https://placehold.co/300x200/007bff/ffffff?text=Mouse" },
-            },
-            {
-              _id: "p5",
-              name: "4K Monitor - UltraSharp",
-              price: 25000,
-              category: "Display",
-              tags: ["gaming", "work"],
-              image: { url: "https://placehold.co/300x200/9933ff/ffffff?text=Monitor" },
-            },
+            { _id: "p4", name: "Wireless Mouse", price: 599, category: "Accessory", tags: ["computer", "office"], image: { url: "https://placehold.co/300x200/007bff/ffffff?text=Mouse" } },
+            { _id: "p5", name: "4K Monitor - UltraSharp", price: 25000, category: "Display", tags: ["gaming", "work"], image: { url: "https://placehold.co/300x200/9933ff/ffffff?text=Monitor" } },
           ],
         },
       ];
@@ -421,19 +393,16 @@ const SearchPage = ({
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
-    onSearchChange(query); // Propagate the change up to the parent
+    onSearchChange(query);
   };
 
   const filtered = businesses.filter((business) => {
     const lowerQuery = searchQuery.toLowerCase();
-    
-    // 1. Business matches
     const businessMatches =
       business.businessName?.toLowerCase().includes(lowerQuery) ||
       business.businessDescription?.toLowerCase().includes(lowerQuery) ||
       business.businessCategory?.toLowerCase().includes(lowerQuery);
 
-    // 2. Any product within the business matches
     const productMatches = business.products?.some((product: any) =>
       product.name?.toLowerCase().includes(lowerQuery) ||
       product.category?.toLowerCase().includes(lowerQuery) ||
@@ -444,23 +413,23 @@ const SearchPage = ({
   });
 
   return (
-    <div className="search-page">
+    <div className="sp-search-page">
       {/* Header */}
-      <header className="app-header">
-        <button onClick={onBack} className="back-button">
+      <header className="sp-app-header">
+        <button onClick={onBack} className="sp-back-button">
           <span className="material-icons">arrow_back</span>
         </button>
-        <div className="search-input-wrapper">
-          <span className="material-icons search-icon">search</span>
+        <div className="sp-search-input-wrapper">
+          <span className="material-icons sp-search-icon">search</span>
           <input
             type="text"
             placeholder="Search businesses and products..."
             value={searchQuery}
             onChange={handleSearchChange}
-            className="search-page-input"
+            className="sp-search-page-input"
           />
           {searchQuery && (
-            <button className="search-clear" onClick={() => setSearchQuery("")}>
+            <button className="sp-search-clear" onClick={() => setSearchQuery("")}>
               <span className="material-icons">close</span>
             </button>
           )}
@@ -468,45 +437,39 @@ const SearchPage = ({
       </header>
 
       {/* Main */}
-      <main className="search-results-container">
+      <main className="sp-search-results-container">
         {loading ? (
-          <div className="search-loading">Loading businesses...</div>
+          <div className="sp-search-loading">Loading businesses...</div>
         ) : filtered.length === 0 ? (
-          <div className="search-no-results">No businesses or products found.</div>
+          <div className="sp-search-no-results">No businesses or products found.</div>
         ) : (
           filtered.map((business) => (
-            <div key={business._id} className="business-block">
-              {/* Business Header */}
-              <div className="business-card">
+            <div key={business._id} className="sp-business-block">
+              <div className="sp-business-card">
                 <img
                   src={business.logoUrl || "https://placehold.co/80x80?text=Logo"}
                   alt={business.businessName}
-                  className="business-logo"
+                  className="sp-business-logo"
                 />
-                <div className="business-info">
+                <div className="sp-business-info">
                   <h3>{business.businessName}</h3>
-                   <div className="company-stats">
-                    <span className="">followers : {business.followers}</span>
-                    <span className="">ER : {business.engagementRate}</span>
+                  <div className="sp-company-stats">
+                    <span>followers: {business.followers}</span>
+                    <span>ER: {business.engagementRate}</span>
                     <a href={business.businessWebsite || '#'} target="_blank" rel="noopener noreferrer">
-                      <button className="visit-btn">
-              Visit site
-            </button>
+                      <button className="sp-visit-btn">Visit site</button>
                     </a>
-
-          </div>
+                  </div>
                   <p>{business.businessDescription}</p>
-                 
                 </div>
               </div>
 
-              {/* Products Inside the Same Business Block */}
+              {/* Products */}
               {business.products?.length > 0 ? (
-                <div className="products-grid">
+                <div className="sp-products-grid">
                   {business.products
                     .filter((product: any) => {
                       if (!searchQuery) return true;
-                      
                       const lowerQuery = searchQuery.toLowerCase();
                       return (
                         product.name?.toLowerCase().includes(lowerQuery) ||
@@ -517,76 +480,64 @@ const SearchPage = ({
                       );
                     })
                     .map((product: any) => (
-                      <div 
-                        key={product._id} 
-                        className="product-card minimal"
-                        // Click anywhere on the card to open the popup
-                        onClick={() => setSelectedProduct(product)} 
+                      <div
+                        key={product._id}
+                        className="sp-product-card"
+                        onClick={() => setSelectedProduct(product)}
                       >
-                        <div className="product-details-text">
-                            <p>
-                                Product: <span className="product-name">{product.name}</span>
-                            </p>
-                            <p>
-                                Price:<span className="product-price-text">₹{product.price || "N/A"}</span>
-                            </p>
+                        <div className="sp-product-details-text">
+                          <p>
+                            Product: <span className="sp-product-name">{product.name}</span>
+                          </p>
+                          <p>
+                            Price: <span className="sp-product-price-text">₹{product.price || "N/A"}</span>
+                          </p>
                         </div>
-                       <button
-  className="view-btn"
-  onClick={(e) => {
-    e.stopPropagation();
-    setSelectedProduct(product);
-  }}
-  title="View Details"
->
-  <span className="material-icons">visibility</span>
-</button>
-
+                        <button
+                          className="sp-view-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedProduct(product);
+                          }}
+                        >
+                          <span className="material-icons">visibility</span>
+                        </button>
                       </div>
                     ))}
                 </div>
               ) : (
-                <div className="no-products">No products listed for this business.</div>
+                <div className="sp-no-products">No products listed for this business.</div>
               )}
             </div>
           ))
         )}
       </main>
 
-      {/* Image Popup */}
+      {/* Popup */}
       {selectedProduct && (
-        <div
-          className="image-popup-overlay"
-          onClick={() => setSelectedProduct(null)}
-        >
-          <div className="image-popup" onClick={(e) => e.stopPropagation()}>
+        <div className="sp-image-popup-overlay" onClick={() => setSelectedProduct(null)}>
+          <div className="sp-image-popup" onClick={(e) => e.stopPropagation()}>
             <img
-              src={
-                selectedProduct.image?.url ||
-                "https://placehold.co/300x200?text=Product"
-              }
+              src={selectedProduct.image?.url || "https://placehold.co/300x200?text=Product"}
               alt={selectedProduct.name}
             />
-            
-            <div className="popup-details">
-                <h3>{selectedProduct.name}</h3>
-                <span className="popup-price">₹{selectedProduct.price || "N/A"}</span>
-              
-               <a href={selectedProduct.productLink || '#'} target="_blank" rel="noopener noreferrer">
-                 <button 
-                    className="select-product-btn"
-                    onClick={() => {
-                        onSelectSearchResult(selectedProduct);
-                        setSelectedProduct(null); 
-                    }}
+            <div className="sp-popup-details">
+              <h3>{selectedProduct.name}</h3>
+              <span className="sp-popup-price">₹{selectedProduct.price || "N/A"}</span>
+              <a href={selectedProduct.productLink || '#'} target="_blank" rel="noopener noreferrer">
+                <button
+                  className="sp-select-product-btn"
+                  onClick={() => {
+                    onSelectSearchResult(selectedProduct);
+                    setSelectedProduct(null);
+                  }}
                 >
-                    Select Product
+                  Select Product
                 </button>
-               </a>
+              </a>
             </div>
-
             <button
-              className="close-popup"
+              className="sp-close-popup"
               onClick={() => setSelectedProduct(null)}
             >
               ✕
@@ -595,283 +546,52 @@ const SearchPage = ({
         </div>
       )}
 
-      {/* Styles */}
       <style jsx>{`
-        /* --- General and Header Styles (Kept as before) --- */
-        .search-page {
-          background: #000;
-          color: #fff;
-          min-height: 100vh;
-        }
+        .sp-search-page { background: #000; color: #fff; min-height: 100vh; }
+        .sp-app-header { display: flex; align-items: center; padding: 0.8rem 1rem; border-bottom: 1px solid #222; background: #000; position: sticky; top: 0; z-index: 10; }
+        .sp-back-button { background: none; border: none; color: #fff; cursor: pointer; }
+        .sp-search-input-wrapper { display: flex; align-items: center; background: #111; border-radius: 8px; padding: 0.4rem 0.8rem; flex: 1; margin-left: 0.8rem; }
+        .sp-search-page-input { flex: 1; background: transparent; border: none; color: #fff; outline: none; font-size: 1rem; }
+        .sp-search-icon { color: #aaa; margin-right: 0.4rem; }
+        .sp-search-clear { background: none; border: none; color: #aaa; cursor: pointer; }
 
-        .app-header {
-          display: flex;
-          align-items: center;
-          padding: 0.8rem 1rem;
-          border-bottom: 1px solid #222;
-          background: #000;
-          position: sticky;
-          top: 0;
-          z-index: 10;
-        }
-
-        .back-button {
-          background: none;
-          border: none;
-          color: #fff;
-          cursor: pointer;
-        }
-
-        .search-input-wrapper {
-          display: flex;
-          align-items: center;
-          background: #111;
-          border-radius: 8px;
-          padding: 0.4rem 0.8rem;
-          flex: 1;
-          margin-left: 0.8rem;
-        }
-
-        .search-page-input {
-          flex: 1;
-          background: transparent;
-          border: none;
-          color: #fff;
-          outline: none;
-          font-size: 1rem;
-        }
-
-        .search-icon {
-          color: #aaa;
-          margin-right: 0.4rem;
-        }
-
-        .search-clear {
-          background: none;
-          border: none;
-          color: #aaa;
-          cursor: pointer;
-        }
-
-        /* Business Block */
-        .business-block {
-          background: #111;
-          border-radius: 12px;
-          margin: 1rem;
-          padding: 1rem;
-          box-shadow: 0 0 6px rgba(255, 255, 255, 0.05);
-        }
-
-        .business-card {
-          display: flex;
-          align-items: center;
-          border-bottom: 1px solid #222;
-          padding-bottom: 1rem;
-          margin-bottom: 1rem;
-        }
-
-        .business-logo {
-          width: 60px;
-          height: 60px;
-          border-radius: 8px;
-          object-fit: cover;
-          margin-right: 1rem;
-        }
-
-        .business-info h3 {
-          margin: 0;
-          color: #fff;
-          font-size: 1.1rem;
-        }
-
-        .business-info p {
-          margin: 2px 0;
-          color: #bbb;
-          font-size: 0.85rem;
-          display: -webkit-box;
-          -webkit-line-clamp: 1;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-
-        .business-category {
-          display: inline-block;
-          background: #007bff33;
-          color: #007bff;
-          padding: 2px 8px;
-          border-radius: 6px;
-          font-size: 0.75rem;
-          margin-top: 4px;
-        }
-        /* --- End General and Header Styles --- */
-
-
-        /* --- Product Card - Minimal Text View --- */
-        .products-grid {
-          display: flex;
-          flex-direction: column;
-          gap: 0.6rem;
-        }
-
-        .product-card.minimal {
-          background: #1a1a1a;
-          border-radius: 10px;
-          padding: 0.8rem 1rem;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          box-shadow: 0 0 4px rgba(255, 255, 255, 0.05);
-          cursor: pointer;
-          transition: background 0.2s, transform 0.1s;
-        }
-        
-        .product-card.minimal:hover {
-            background: #222;
-            transform: translateY(-1px);
-        }
-        
-        .product-details-text {
-            flex: 1;
+        .sp-business-block { background: #111; border-radius: 12px; margin: 1rem; padding: 1rem; box-shadow: 0 0 6px rgba(255, 255, 255, 0.05); }
+        .sp-business-card { display: flex; align-items: center; border-bottom: 1px solid #222; padding-bottom: 1rem; margin-bottom: 1rem; }
+        .sp-business-logo { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; margin-right: 1rem; }
+        .sp-business-info h3 { margin: 0; color: #fff; font-size: 1.1rem; }
+        .sp-business-info p { margin: 2px 0; color: #bbb; font-size: 0.85rem; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+        .sp-company-stats{
+            font-size: 0.75rem;
+    gap: 20px;
             display: flex;
-            flex-direction: column;
-            text-align: left;
-            min-width: 0;
+        justify-content: space-between;
+        align-items: center;
         }
-        
-        .product-details-text p {
-            margin: 0;
-            line-height: 1.4;
-            color: #ccc;
-            font-size: 0.9rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .product-name {
-            font-weight: 600;
-            color: #fff;
-        }
-        
-        .product-price-text {
-            color: #00ff99;
-            font-weight: 600;
-        }
+        .sp-company-stats span { font-size: 0.75rem; color: #888; }
+        .sp-products-grid { display: flex; flex-direction: column; gap: 0.6rem; }
+        .sp-product-card { background: #1a1a1a; border-radius: 10px; padding: 0.8rem 1rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 0 4px rgba(255, 255, 255, 0.05); cursor: pointer; transition: background 0.2s, transform 0.1s; }
+        .sp-product-card:hover { background: #222; transform: translateY(-1px); }
+        .sp-product-details-text { flex: 1; display: flex; flex-direction: column; text-align: left; min-width: 0; }
+        .sp-product-details-text p { margin: 0; line-height: 1.4; color: #ccc; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sp-product-name { font-weight: 600; color: #fff; }
+        .sp-product-price-text { color: #00ff99; font-weight: 600; }
+        .sp-view-btn { background: #4CAF50; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-left: 15px; flex-shrink: 0; }
+        .sp-visit-btn { background: #4CAF50; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem }
+        .sp-no-products, .sp-search-loading, .sp-search-no-results { padding: 1rem; color: #aaa; text-align: center; font-style: italic; }
 
-
-        .view-btn {
-          background: #4CAF50;
-          color: #fff;
-          border: none;
-          padding: 8px 14px;
-          border-radius: 6px;
-          cursor: pointer;
-          font-size: 0.85rem;
-    
-          margin-left: 15px; /* Add space between text and button */
-          flex-shrink: 0;
-        }
-
-        .view-btn:hover {
-          background: #4CAF50;
-        }
-        
-        .no-products, .search-loading, .search-no-results {
-            padding: 1rem;
-            color: #aaa;
-            text-align: center;
-            font-style: italic;
-        }
-
-        /* --- Popup Styles --- */
-        .image-popup-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.8);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 100;
-        }
-
-        .image-popup {
-          background: #111;
-          padding: 1.5rem;
-          border-radius: 12px;
-          position: relative;
-          width: 90%;
-          max-width: 380px;
-          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-          text-align: center;
-        }
-
-        .image-popup img {
-          width: 100%;
-          max-height: 250px;
-          object-fit: cover;
-          border-radius: 8px;
-          margin-bottom: 1rem;
-          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-        }
-
-        .popup-details h3 {
-          margin: 0 0 0.5rem 0;
-          color: #fff;
-          font-size: 1.4rem;
-        }
-
-        .popup-price {
-          color: #00ff99;
-          margin-top: 4px;
-          font-weight: 700;
-          font-size: 1.2rem;
-          display: block;
-          margin-bottom: 1rem;
-        }
-
-        .popup-description {
-            color: #ccc;
-            font-size: 0.9rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .select-product-btn {
-            background: #00ff99;
-            color: #000;
-            border: none;
-            padding: 10px 20px;
-            borderRadius: 8px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-            transition: background 0.2s;
-        }
-
-        .select-product-btn:hover {
-            background: #00e685;
-        }
-
-        .close-popup {
-          position: absolute;
-          top: 10px;
-          right: 10px;
-          background: rgba(255, 255, 255, 0.1);
-          border: none;
-          borderRadius: 50%;
-          width: 30px;
-          height: 30px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #fff;
-          font-size: 1rem;
-          cursor: pointer;
-        }
+        .sp-image-popup-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 100; }
+        .sp-image-popup { background: #111; padding: 1.5rem; border-radius: 12px; position: relative; width: 90%; max-width: 380px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5); text-align: center; }
+        .sp-image-popup img { width: 100%; max-height: 250px; object-fit: cover; border-radius: 8px; margin-bottom: 1rem; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); }
+        .sp-popup-details h3 { margin: 0 0 0.5rem 0; color: #fff; font-size: 1.4rem; }
+        .sp-popup-price { color: #00ff99; margin-top: 4px; font-weight: 700; font-size: 1.2rem; display: block; margin-bottom: 1rem; }
+        .sp-select-product-btn { background: #00ff99; color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; width: 100%; transition: background 0.2s; }
+        .sp-select-product-btn:hover { background: #00e685; }
+        .sp-close-popup { position: absolute; top: 10px; right: 10px; background: rgba(255, 255, 255, 0.1); border: none; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1rem; cursor: pointer; }
       `}</style>
     </div>
   );
 };
+
 // ---------------- HEADER COMPONENT ----------------
 interface HeaderProps {
   title?: string;
@@ -2230,8 +1950,10 @@ const comstyles = `
   padding: 20px;
   background: #000000;
   min-height: 100vh;
+  color: #ffffff;
 }
 
+/* Tabs */
 .tabs-container {
   border-bottom: 1px solid #363636;
   margin-bottom: 20px;
@@ -2242,7 +1964,6 @@ const comstyles = `
   display: flex;
   max-width: 100%;
   margin: 0 auto;
-  background: #000000;
 }
 
 .tab {
@@ -2256,7 +1977,6 @@ const comstyles = `
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: all 0.2s ease;
-  background: #000000;
 }
 
 .tab.active {
@@ -2283,6 +2003,8 @@ const comstyles = `
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 200px;
+  position: relative;
 }
 
 .filter-label {
@@ -2292,18 +2014,22 @@ const comstyles = `
 }
 
 .filter-select {
-  background: #000000;
+  background: #1a1a1a;
   border: 1px solid #363636;
-  border-radius: 4px;
-  padding: 8px 12px;
+  border-radius: 6px;
+  padding: 10px 12px;
   color: #ffffff;
   font-size: 14px;
-  min-width: 150px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .filter-select:focus {
   outline: none;
-  border-color: #0095f6;
+  border-color: #00ff99;
 }
 
 .company-cards-grid {
@@ -2345,7 +2071,6 @@ const comstyles = `
   justify-content: center;
   align-items: center;
   height: 50vh;
-  background: #000000;
 }
 
 .text-default {
@@ -2379,13 +2104,12 @@ const comstyles = `
 
   .filter-select {
     width: 100%;
-  
   }
 
   .company-cards-grid {
     grid-template-columns: 1fr;
     gap: 15px;
-    padding: 0 0px;
+    padding: 0;
   }
 
   .banner-card-wrapper {
@@ -2677,8 +2401,8 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
 
       const endpoint =
         activeTab === "Following"
-          ? `https://api.zooda.in/api/posts/following/${user._id}`
-          : `https://api.zooda.in/api/posts/unfollowed/${user._id}`;
+          ? `http://localhost:5000/api/posts/following/${user._id}`
+          : `http://localhost:5000/api/posts/unfollowed/${user._id}`;
 
       const response = await axios.get(endpoint);
       const data = response.data;
@@ -2693,7 +2417,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
               `https://picsum.photos/600/400?random=${i}`;
 
             if (!imageUrl.startsWith("http")) {
-              imageUrl = `https://api.zooda.in${
+              imageUrl = `http://localhost:5000${
                 imageUrl.startsWith("/") ? "" : "/"
               }${imageUrl}`;
             }
@@ -2705,7 +2429,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
             if (companyId) {
               try {
                 const companyResponse = await axios.get(
-                  `https://api.zooda.in/api/companies/${companyId}`
+                  `http://localhost:5000/api/companies/${companyId}`
                 );
                 if (companyResponse.data.success) {
                   company = companyResponse.data.company;
@@ -2714,7 +2438,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
                   if (company.logoUrl) {
                     let logoUrl = company.logoUrl;
                     if (!logoUrl.startsWith("http")) {
-                      logoUrl = `https://api.zooda.in${
+                      logoUrl = `http://localhost:5000${
                         logoUrl.startsWith("/") ? "" : "/"
                       }${logoUrl}`;
                     }
@@ -2744,7 +2468,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
             if (user?._id && post._id) {
               try {
                 const likeResponse = await axios.get(
-                  `https://api.zooda.in/api/post/${post._id}/like-status/${user._id}`
+                  `http://localhost:5000/api/post/${post._id}/like-status/${user._id}`
                 );
                 isLiked = likeResponse.data.isLiked;
               } catch (err) {
@@ -2814,7 +2538,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
       };
       setPosts(updatedPosts);
 
-      await axios.post(`https://api.zooda.in/api/post/${postId}/like`, {
+      await axios.post(`http://localhost:5000/api/post/${postId}/like`, {
         userId: user._id,
       });
 
@@ -2842,7 +2566,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
 
     try {
       const response = await axios.post(
-        `https://api.zooda.in/api/post/${postId}/comment`,
+        `http://localhost:5000/api/post/${postId}/comment`,
         {
           text: commentText,
           userId: user._id,
@@ -3054,7 +2778,7 @@ const PostGridItem = ({
     if (!showComments && post._id) {
       try {
         const response = await axios.get(
-          `https://api.zooda.in/api/post/${post._id}/comments`
+          `http://localhost:5000/api/post/${post._id}/comments`
         );
         setPostComments(response.data.comments || []);
       } catch (err) {
@@ -3086,7 +2810,7 @@ const PostGridItem = ({
         setCommentText("");
         // Refresh comments
         const response = await axios.get(
-          `https://api.zooda.in/api/post/${post._id}/comments`
+          `http://localhost:5000/api/post/${post._id}/comments`
         );
         setPostComments(response.data.comments || []);
       } else if (result.error) {
@@ -3811,6 +3535,7 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showPostDetail, setShowPostDetail] = useState(false);
   const [showPostsGrid, setShowPostsGrid] = useState(false);
+const postCategories = ["All", "News", "Offer", "Update"]; // customize as needed
 
   useEffect(() => {
     const checkFollowStatus = async () => {
@@ -3879,11 +3604,12 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
 
   const handleFollow = async () => {
     if (!user?._id) {
-      if (onLoginRequest) {
-        onLoginRequest();
-      }
-      return;
+    // Open login page if not logged in
+    if (onLoginRequest) {
+      onLoginRequest();
     }
+    return;
+  }
     
     try {
       const res = await axios.post(
@@ -3940,7 +3666,7 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
       };
       setPosts(updatedPosts);
 
-      await axios.post(`https://api.zooda.in/api/post/${postId}/like`, {
+      await axios.post(`http://localhost:5000/api/post/${postId}/like`, {
         userId: user._id,
       });
 
@@ -3968,7 +3694,7 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
 
     try {
       const response = await axios.post(
-        `https://api.zooda.in/api/post/${postId}/comment`,
+        `http://localhost:5000/api/post/${postId}/comment`,
         {
           text: commentText,
           userId: user._id,
@@ -4066,19 +3792,14 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
             >
               Visit site
             </a>
-            {user?._id && (
-              <button
-                className={`btn btn-solid ${isFollowing ? "following" : ""}`}
-                onClick={handleFollow}
-              >
-                {isFollowing ? "Unfollow" : "Follow"}
-              </button>
-            )}
+             <button
+    className={`btn btn-solid ${isFollowing ? "following" : ""}`}
+    onClick={handleFollow}
+  >
+    {isFollowing ? "Unfollow" : "Follow"}
+  </button>
           </div>
         </section>
-
-        <hr className="profile-divider" />
-
         <nav className="tabs profile-tabs" role="tablist">
           <button
             className={`tab ${activeTab === "Posts" ? "active" : ""}`}
@@ -4107,6 +3828,17 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
           <>
             {activeTab === "Posts" && (
               <>
+               <div className="post-tags">
+      {postCategories.map((category) => (
+        <button
+          key={category}
+          className={`tag-button ${activePostCategory === category ? "active" : ""}`}
+          onClick={() => setActivePostCategory(category)}
+        >
+          {category}
+        </button>
+      ))}
+    </div>
                 {showPostDetail && selectedPost ? (
                   <div className="post-detail-overlay">
                     <div className="post-detail-container">
@@ -4117,16 +3849,17 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
                         <span className="material-icons">close</span>
                       </button>
                       <div className="post-detail-content">
-                        <PostGridItem
-                          post={selectedPost}
-                          postIndex={posts.findIndex(p => p._id === selectedPost._id)}
-                          onSelectPost={() => {}}
-                          onLike={handleLike}
-                          onComment={handleComment}
-                          onShare={handleShare}
-                          user={user}
-                          onLoginRequest={onLoginRequest}
-                        />
+                       <PostGridItem
+  post={posts.find(p => p._id === selectedPost._id) || selectedPost}
+  postIndex={posts.findIndex(p => p._id === selectedPost._id)}
+  onSelectPost={handlePostImageClick}
+  onLike={handleLike}
+  onComment={handleComment}
+  onShare={handleShare}
+  user={user}
+  onLoginRequest={onLoginRequest}
+/>
+
                       </div>
                     </div>
                   </div>

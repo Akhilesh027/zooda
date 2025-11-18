@@ -35,13 +35,13 @@ const storage = new CloudinaryStorage({
   },
 });
 
-// ✅ Multer Middleware
 const upload = multer({ storage });
 
 mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://akhileshreddy811_db_user:6MQywIJtJR8oLeCo@cluster0.t0i7d7t.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
+
 const UserSchema = new mongoose.Schema({
   firstName: { type: String, required: true, trim: true },
   lastName: { type: String, required: true, trim: true },
@@ -1507,17 +1507,149 @@ app.put('/api/promotions/:id', async (req, res) => {
   }
 });
 
-// ---------------- DELETE PROMOTION ----------------
-app.delete('/api/promotions/:id', async (req, res) => {
-  try {
-    const deleted = await Promotion.findByIdAndDelete(req.params.id);
-    if (!deleted) {
-      return res.status(404).json({ success: false, message: 'Promotion not found' });
-    }
-    res.json({ success: true, message: 'Promotion deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+// Posts - Update endpoint
+app.put('/api/posts/:id', upload.single('media'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    
+    // Handle file upload
+    if (req.file) {
+      updateData.mediaUrl = `/uploads/${req.file.filename}`;
+    }
+    
+    // Handle scheduledFor date
+    if (updateData.scheduledFor) {
+      updateData.scheduledFor = new Date(updateData.scheduledFor);
+    }
+    
+    const updatedPost = await Post.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+    
+    if (!updatedPost) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Post not found' 
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Post updated successfully',
+      post: updatedPost 
+    });
+    
+  } catch (error) {
+    console.error('Error updating post:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
+  }
+});
+
+// Products - Update endpoint
+app.put('/api/products/:id', upload.single('image'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    
+    // Handle file upload
+    if (req.file) {
+      updateData.image = {
+        url: `/uploads/${req.file.filename}`,
+        filename: req.file.filename
+      };
+    }
+    
+    // Convert price to number if provided
+    if (updateData.price) {
+      updateData.price = parseFloat(updateData.price);
+    }
+    
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+    
+    if (!updatedProduct) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Product not found' 
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Product updated successfully',
+      product: updatedProduct 
+    });
+    
+  } catch (error) {
+    console.error('Error updating product:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
+  }
+});
+
+// Promotions - Update endpoint
+app.put('/api/promotions/:id', upload.single('image'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    
+    // Handle file upload
+    if (req.file) {
+      updateData.image = `/uploads/${req.file.filename}`;
+    }
+    
+    // Handle platforms array
+    if (updateData.platforms) {
+      updateData.platforms = Array.isArray(updateData.platforms) 
+        ? updateData.platforms 
+        : [updateData.platforms];
+    }
+    
+    // Convert dates
+    if (updateData.startDate) {
+      updateData.startDate = new Date(updateData.startDate);
+    }
+    if (updateData.endDate) {
+      updateData.endDate = new Date(updateData.endDate);
+    }
+    
+    const updatedPromotion = await Promotion.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+    
+    if (!updatedPromotion) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Promotion not found' 
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Promotion updated successfully',
+      promotion: updatedPromotion 
+    });
+    
+  } catch (error) {
+    console.error('Error updating promotion:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
+  }
 });
 
 app.get('/api/analytics', authMiddleware, async (req, res) => {
@@ -2025,7 +2157,7 @@ app.get("/api/user/:userId/following", async (req, res) => {
       
       // Ensure logo URL is properly formatted
       if (businessObj.logoUrl && !businessObj.logoUrl.startsWith("http")) {
-        businessObj.logoUrl = `${process.env.API_BASE_URL || 'https://api.zooda.in'}${businessObj.logoUrl.startsWith("/") ? "" : "/"}${businessObj.logoUrl}`;
+        businessObj.logoUrl = `${process.env.API_BASE_URL || 'http://localhost:5000'}${businessObj.logoUrl.startsWith("/") ? "" : "/"}${businessObj.logoUrl}`;
       }
 
       // Generate username from businessName
@@ -2239,7 +2371,7 @@ app.get("/api/posts/following/:userId", async (req, res) => {
       if (postObj.business && postObj.business.logoUrl) {
         let logoUrl = postObj.business.logoUrl;
         if (!logoUrl.startsWith("http")) {
-          logoUrl = `${process.env.API_BASE_URL || 'https://api.zooda.in'}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
+          logoUrl = `${process.env.API_BASE_URL || 'http://localhost:5000'}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
         }
         postObj.business.logoUrl = logoUrl;
       }
@@ -2318,7 +2450,7 @@ app.get("/api/posts/unfollowed/:userId", async (req, res) => {
       if (postObj.business && postObj.business.logoUrl) {
         let logoUrl = postObj.business.logoUrl;
         if (!logoUrl.startsWith("http")) {
-          logoUrl = `${process.env.API_BASE_URL || 'https://api.zooda.in'}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
+          logoUrl = `${process.env.API_BASE_URL || 'http://localhost:5000'}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
         }
         postObj.business.logoUrl = logoUrl;
       }
@@ -2455,41 +2587,82 @@ app.delete("/api/post/:postId", authMiddleware, async (req, res) => {
 //                             ADMIN ROUTES
 // =========================================================================
 
-// --- GET /api/admin/businesses?status=pending/approved ---
-app.get('/api/admin/businesses', async (req, res) => {
-    try {
-        const { status } = req.query;
-        let query = {};
-        
-        if (status === 'pending') {
-            // Fetch businesses explicitly set to 'pending' or 'active' but unverified
-            query = { $or: [{ status: 'pending' }, { status: 'active', verified: false }] }; 
-            
-        } else if (status === 'approved') {
-            // Approved and Suspended (for management)
-            query = { $or: [{ status: 'active', verified: true }, { status: 'suspended' }] };
-        } else {
-            return res.status(400).json({ message: 'Invalid status query parameter.' });
-        }
+// Get posts for a specific business
+app.get('/api/post/:businessId', async (req, res) => {
+  try {
+    const { businessId } = req.params;
+    
+    const posts = await Post.find({ business: businessId })
+      .sort({ createdAt: -1 })
+      .lean();
 
-        const businesses = await Business.find(query)
-            .populate('user', 'firstName lastName email')
-            .lean();
-
-        // Adjusting business status for frontend logic if using the proposed `verified` flag:
-        const formattedBusinesses = businesses.map(biz => ({
-            ...biz,
-            status: biz.status === 'active' && !biz.verified ? 'pending' : biz.status // For frontend UI
-        }));
-        
-        res.json(formattedBusinesses);
-
-    } catch (error) {
-        console.error('Admin get businesses error:', error);
-        res.status(500).json({ message: 'Server error fetching businesses' });
-    }
+    res.json(posts);
+  } catch (error) {
+    console.error('Get business posts error:', error);
+    res.status(500).json({ message: 'Server error fetching posts' });
+  }
 });
 
+// Get products for a specific business
+app.get('/api/product/:businessId', async (req, res) => {
+  try {
+    const { businessId } = req.params;
+    
+    const products = await Product.find({ business: businessId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json(products);
+  } catch (error) {
+    console.error('Get business products error:', error);
+    res.status(500).json({ message: 'Server error fetching products' });
+  }
+});
+
+// Get promotions for a specific business
+app.get('/api/promotions/:businessId', async (req, res) => {
+  try {
+    const { businessId } = req.params;
+    
+    const promotions = await Promotion.find({ business: businessId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json(promotions);
+  } catch (error) {
+    console.error('Get business promotions error:', error);
+    res.status(500).json({ message: 'Server error fetching promotions' });
+  }
+});
+
+// Update the main businesses endpoint to not populate posts, products, promotions
+app.get('/api/admin/businesses', async (req, res) => {
+  try {
+    const { status } = req.query;
+    let query = {};
+    
+    if (status === 'pending') {
+      query = { $or: [{ status: 'pending' }, { status: 'active', verified: false }] };
+    } else if (status === 'approved') {
+      query = { $or: [{ status: 'active', verified: true }, { status: 'suspended' }] };
+    }
+
+    const businesses = await Business.find(query)
+      .populate('user', 'firstName lastName email')
+      .lean();
+
+    const formattedBusinesses = businesses.map(biz => ({
+      ...biz,
+      status: biz.status === 'active' && !biz.verified ? 'pending' : biz.status
+    }));
+    
+    res.json(formattedBusinesses);
+
+  } catch (error) {
+    console.error('Admin get businesses error:', error);
+    res.status(500).json({ message: 'Server error fetching businesses' });
+  }
+});
 // --- PUT /api/admin/businesses/:businessId/approve ---
 app.put('/api/admin/businesses/:businessId/approve', async (req, res) => {
     try {
@@ -2899,6 +3072,301 @@ app.delete('/api/admin/categories/:categoryId/subcategories/:subcategoryId', asy
     res.json({ message: 'Subcategory deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting subcategory', error: error.message });
+  }
+});
+// Get all businesses with their posts, products, and promotions
+app.get('/api/admin/businesses', async (req, res) => {
+  try {
+    const { status } = req.query;
+    let query = {};
+    
+    if (status === 'pending') {
+      query = { $or: [{ status: 'pending' }, { status: 'active', verified: false }] };
+    } else if (status === 'approved') {
+      query = { $or: [{ status: 'active', verified: true }, { status: 'suspended' }] };
+    }
+    // If no status provided, return all businesses
+
+    const businesses = await Business.find(query)
+      .populate('user', 'firstName lastName email')
+      .populate({
+        path: 'posts',
+        options: { sort: { createdAt: -1 } }
+      })
+      .populate({
+        path: 'products',
+        options: { sort: { createdAt: -1 } }
+      })
+      .populate({
+        path: 'promotions',
+        options: { sort: { createdAt: -1 } }
+      })
+      .lean();
+
+    const formattedBusinesses = businesses.map(biz => ({
+      ...biz,
+      status: biz.status === 'active' && !biz.verified ? 'pending' : biz.status
+    }));
+    
+    res.json(formattedBusinesses);
+
+  } catch (error) {
+    console.error('Admin get businesses error:', error);
+    res.status(500).json({ message: 'Server error fetching businesses' });
+  }
+});
+
+// Delete a business
+app.delete('/api/admin/businesses/:businessId', async (req, res) => {
+  try {
+    const businessId = req.params.businessId;
+
+    // Delete all related data first
+    await Promise.all([
+      Post.deleteMany({ business: businessId }),
+      Product.deleteMany({ business: businessId }),
+      Promotion.deleteMany({ business: businessId })
+    ]);
+
+    // Then delete the business
+    const business = await Business.findByIdAndDelete(businessId);
+    
+    if (!business) {
+      return res.status(404).json({ message: 'Business not found' });
+    }
+
+    res.json({ success: true, message: 'Business and all associated data deleted successfully' });
+  } catch (error) {
+    console.error('Admin delete business error:', error);
+    res.status(500).json({ message: 'Server error deleting business' });
+  }
+});
+
+// Update a business
+app.put('/api/admin/businesses/:businessId', async (req, res) => {
+  try {
+    const { 
+      businessName, 
+      businessCategory, 
+      businessEmail, 
+      businessPhone, 
+      businessAddress, 
+      businessDescription,
+      businessWebsite 
+    } = req.body;
+
+    const business = await Business.findByIdAndUpdate(
+      req.params.businessId,
+      {
+        businessName,
+        businessCategory,
+        businessEmail,
+        businessPhone,
+        businessAddress,
+        businessDescription,
+        businessWebsite
+      },
+      { new: true, runValidators: true }
+    ).populate('user', 'firstName lastName email');
+
+    if (!business) {
+      return res.status(404).json({ message: 'Business not found' });
+    }
+
+    res.json({ success: true, message: 'Business updated successfully', business });
+  } catch (error) {
+    console.error('Admin update business error:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Business name or website already exists' });
+    }
+    
+    res.status(500).json({ message: 'Server error updating business' });
+  }
+});
+
+// Delete a post
+app.delete('/api/admin/businesses/:businessId/posts/:postId', async (req, res) => {
+  try {
+    const { businessId, postId } = req.params;
+
+    const post = await Post.findOneAndDelete({ 
+      _id: postId, 
+      business: businessId 
+    });
+
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // Update business post count
+    await Business.findByIdAndUpdate(businessId, {
+      $inc: { totalPosts: -1 }
+    });
+
+    res.json({ success: true, message: 'Post deleted successfully' });
+  } catch (error) {
+    console.error('Admin delete post error:', error);
+    res.status(500).json({ message: 'Server error deleting post' });
+  }
+});
+
+// Delete a product
+app.delete('/api/admin/businesses/:businessId/products/:productId', async (req, res) => {
+  try {
+    const { businessId, productId } = req.params;
+
+    const product = await Product.findOneAndDelete({ 
+      _id: productId, 
+      business: businessId 
+    });
+
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Update business product count
+    await Business.findByIdAndUpdate(businessId, {
+      $inc: { totalProducts: -1 }
+    });
+
+    res.json({ success: true, message: 'Product deleted successfully' });
+  } catch (error) {
+    console.error('Admin delete product error:', error);
+    res.status(500).json({ message: 'Server error deleting product' });
+  }
+});
+
+// Delete a promotion
+app.delete('/api/admin/businesses/:businessId/promotions/:promotionId', async (req, res) => {
+  try {
+    const { businessId, promotionId } = req.params;
+
+    const promotion = await Promotion.findOneAndDelete({ 
+      _id: promotionId, 
+      business: businessId 
+    });
+
+    if (!promotion) {
+      return res.status(404).json({ message: 'Promotion not found' });
+    }
+
+    res.json({ success: true, message: 'Promotion deleted successfully' });
+  } catch (error) {
+    console.error('Admin delete promotion error:', error);
+    res.status(500).json({ message: 'Server error deleting promotion' });
+  }
+});
+
+// Get business analytics with detailed data
+app.get('/api/admin/businesses/:businessId/analytics', async (req, res) => {
+  try {
+    const { businessId } = req.params;
+
+    const analytics = await Business.aggregate([
+      { $match: { _id: new mongoose.Types.ObjectId(businessId) } },
+      {
+        $lookup: {
+          from: 'posts',
+          localField: '_id',
+          foreignField: 'business',
+          as: 'posts'
+        }
+      },
+      {
+        $lookup: {
+          from: 'products',
+          localField: '_id',
+          foreignField: 'business',
+          as: 'products'
+        }
+      },
+      {
+        $lookup: {
+          from: 'promotions',
+          localField: '_id',
+          foreignField: 'business',
+          as: 'promotions'
+        }
+      },
+      {
+        $project: {
+          businessName: 1,
+          status: 1,
+          totalPosts: { $size: '$posts' },
+          totalProducts: { $size: '$products' },
+          totalPromotions: { $size: '$promotions' },
+          totalEngagement: {
+            $sum: {
+              $map: {
+                input: '$posts',
+                as: 'post',
+                in: { 
+                  $add: [
+                    { $size: { $ifNull: ['$$post.likesList', []] } },
+                    { $size: { $ifNull: ['$$post.commentsList', []] } },
+                    { $ifNull: ['$$post.shares', 0] }
+                  ]
+                }
+              }
+            }
+          },
+          totalRevenue: { $sum: '$products.sales.revenue' },
+          followers: 1,
+          engagementRate: 1,
+          createdAt: 1
+        }
+      }
+    ]);
+
+    if (analytics.length === 0) {
+      return res.status(404).json({ message: 'Business analytics not found' });
+    }
+
+    res.json(analytics[0]);
+  } catch (error) {
+    console.error('Admin get business analytics error:', error);
+    res.status(500).json({ message: 'Server error fetching business analytics' });
+  }
+});
+app.delete("/api/post/:postId/comment/:commentId", async (req, res) => {
+  try {
+    const { postId, commentId } = req.params;
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    // Find the comment index
+    const commentIndex = post.commentsList.findIndex(
+      (c) => c._id.toString() === commentId
+    );
+
+    if (commentIndex === -1) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    // Remove the comment
+    post.commentsList.splice(commentIndex, 1);
+
+    // Update commentsCount
+    post.commentsCount = post.commentsList.length;
+
+    await post.save();
+
+    return res.json({
+      success: true,
+      message: "Comment deleted successfully",
+      commentsCount: post.commentsCount,
+      commentsList: post.commentsList,
+    });
+  } catch (err) {
+    console.error("Delete error:", err);
+    return res.status(500).json({ 
+      message: "Delete failed", 
+      error: err.message 
+    });
   }
 });
 

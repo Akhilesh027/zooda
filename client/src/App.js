@@ -3,13 +3,15 @@ import axios from 'axios';
 import {
   LogIn, UserPlus, Home, Briefcase, BarChart3, Image, Tag, Plus, 
   ShoppingBag, TrendingUp, Menu, X, ArrowLeft, Heart, MessageCircle, 
-  Clock, CheckCircle, Hourglass, XCircle, Users, Calendar, Eye, Edit,Edit3, Globe, Phone, MapPin
+  Clock, CheckCircle, Hourglass, XCircle, Users, Calendar, Eye, Edit, Edit3, Globe, Phone, MapPin
 } from 'lucide-react';
 
+import { Trash2 } from "lucide-react";
+
 // --- CONFIGURATION ---
-const API_BASE_URL = 'https://api.zooda.in/api';
+const API_BASE_URL = 'http://localhost:5000/api';
 axios.defaults.baseURL = API_BASE_URL;
-axios.defaults.headers.common['Accept'] = 'application/json'; // Added common Accept header
+axios.defaults.headers.common['Accept'] = 'application/json';
 
 // --- CONTEXT FOR GLOBAL STATE ---
 const AppContext = React.createContext();
@@ -50,6 +52,7 @@ const StatCard = ({ title, value, icon, color }) => (
     <p className="text-3xl font-bold mt-3">{value}</p>
   </div>
 );
+
 const AuthScreen = ({ isRegister, onAuthSuccess, switchMode }) => {
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', password: '', confirmPassword: ''
@@ -139,6 +142,7 @@ const AuthScreen = ({ isRegister, onAuthSuccess, switchMode }) => {
     </div>
   );
 };
+
 const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }) => {
   const [formData, setFormData] = useState({
     businessName: "",
@@ -153,7 +157,6 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
   const [isEditing, setIsEditing] = useState(false);
   const [categories, setCategories] = useState([]);
 
-  // ---------------- FETCH CATEGORIES ----------------
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -167,7 +170,6 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
     fetchCategories();
   }, []);
 
-  // ---------------- SET EXISTING BUSINESS DATA ----------------
   useEffect(() => {
     if (existingBusiness) {
       setFormData({
@@ -181,7 +183,6 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
     }
   }, [existingBusiness]);
 
-  // ---------------- FILE UPLOAD ----------------
   const handleFileChange = (e) => {
     setLogoFile(e.target.files[0]);
   };
@@ -192,7 +193,6 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
     setIsEditing(false);
   };
 
-  // ---------------- READ ONLY VIEW ----------------
   if (existingBusiness && !isEditing) {
     return (
       <div className="p-8 max-w-4xl mx-auto bg-white shadow-xl rounded-xl mt-10">
@@ -272,7 +272,6 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
     );
   }
 
-  // ---------------- EDIT (FORM) ----------------
   return (
     <div className="p-8 max-w-4xl mx-auto bg-white shadow-xl rounded-xl mt-10">
       <div className="flex justify-between items-center border-b pb-3 mb-6">
@@ -304,7 +303,6 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
             required
           />
 
-          {/* FETCHED CATEGORY OPTIONS */}
           <select
             value={formData.businessCategory}
             onChange={(e) =>
@@ -314,7 +312,6 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
             required
           >
             <option value="">Select Category</option>
-
             {categories.map((cat) => (
               <option key={cat._id} value={cat.name}>
                 {cat.name}
@@ -369,18 +366,14 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
         </div>
 
         <div>
-  <label className="block text-sm font-medium text-gray-700 mb-2">
-    Business Logo
-  </label>
-
-  <input type="file" accept="image/*" onChange={handleFileChange} />
-
-  {/* 📌 Image size instruction text */}
-  <p className="text-xs text-gray-500 mt-1">
-    Recommended size: <strong>500px × 500px</strong>
-  </p>
-</div>
-
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Business Logo
+          </label>
+          <input type="file" accept="image/*" onChange={handleFileChange} />
+          <p className="text-xs text-gray-500 mt-1">
+            Recommended size: <strong>500px × 500px</strong>
+          </p>
+        </div>
 
         <div className="flex space-x-4">
           <button
@@ -399,6 +392,7 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
     </div>
   );
 };
+
 const BusinessPendingScreen = ({ business, onLogout }) => {
   const [polling, setPolling] = useState(true);
 
@@ -448,6 +442,7 @@ const BusinessPendingScreen = ({ business, onLogout }) => {
     </div>
   );
 };
+
 const DashboardScreen = ({ existingBusiness, user, notify }) => {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -466,9 +461,7 @@ const DashboardScreen = ({ existingBusiness, user, notify }) => {
       setLoading(true);
       console.log(`[DEBUG] Dashboard Fetching: Requesting data for Business ID: ${businessId}`);
       
-      const response = await axios.get(
-        `/dashboard/${businessId}`
-      );
+      const response = await axios.get(`/dashboard/${businessId}`);
 
       console.log('[DEBUG] Dashboard API Response (Raw):', response.data);
       
@@ -509,12 +502,10 @@ const DashboardScreen = ({ existingBusiness, user, notify }) => {
   
   if (!dashboardData) return null;
 
-  // --- START: CORRECTION APPLIED HERE ---
   const {
     stats = {},
     recentActivity = [],
     business = {},
-    // Added platformPerformance, though not used in stats cards
     platformPerformance = [] 
   } = dashboardData;
 
@@ -522,16 +513,11 @@ const DashboardScreen = ({ existingBusiness, user, notify }) => {
     totalEngagement = 0,
     totalProducts = 0,
     totalPromotions = 0,
-    // Note: 'followers' is missing in your sample data, but setting a default
-    followers = 0, 
-    // totalPosts is now the total engagement value source
+    followers = 0,
     totalPosts = 0
   } = stats; 
-  // --- END: CORRECTION APPLIED HERE ---
-  
-  // Choose the higher value for Engagement card, assuming totalEngagement is correct
-  const displayEngagement = totalEngagement > 0 ? totalEngagement : totalPosts;
 
+  const displayEngagement = totalEngagement > 0 ? totalEngagement : totalPosts;
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen rounded-lg">
@@ -540,7 +526,6 @@ const DashboardScreen = ({ existingBusiness, user, notify }) => {
         {business.name || existingBusiness?.businessName || "Business"} Dashboard
       </h1>
 
-      {/* KPI CARDS - UPDATED to use 'stats' values */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Total Engagement"
@@ -568,9 +553,7 @@ const DashboardScreen = ({ existingBusiness, user, notify }) => {
         />
       </div>
 
-      {/* MAIN SECTIONS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* RECENT ACTIVITY */}
         <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg">
           <h2 className="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">
             Recent Activity
@@ -590,9 +573,7 @@ const DashboardScreen = ({ existingBusiness, user, notify }) => {
                       {new Date(activity.time).toLocaleString()}
                     </p>
                   </div>
-                  <span className="text-sm text-indigo-600 font-medium">
-                    {activity.engagement}
-                  </span>
+                
                 </div>
               ))
             ) : (
@@ -601,7 +582,6 @@ const DashboardScreen = ({ existingBusiness, user, notify }) => {
           </div>
         </div>
 
-        {/* BUSINESS INFO */}
         <div className="bg-white p-6 rounded-xl shadow-lg">
           <h2 className="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">
             Business Details
@@ -621,7 +601,6 @@ const DashboardScreen = ({ existingBusiness, user, notify }) => {
             ).toLocaleDateString()}
           </p>
           
-          {/* Platform Performance Block (Optional: Displaying the new data) */}
           <h3 className="text-md font-semibold text-gray-700 mt-4 border-t pt-3">
             Platform Performance
           </h3>
@@ -632,22 +611,22 @@ const DashboardScreen = ({ existingBusiness, user, notify }) => {
               </li>
             ))}
           </ul>
-          
         </div>
       </div>
     </div>
   );
 };
-const PostCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
+
+// UPDATED: PostCreateForm with editing functionality
+const PostCreateForm = ({ businessId, onClose, onSuccess, notify, existingPost }) => {
   const [formData, setFormData] = useState({
-    content: '',
-    scheduledFor: '',
-    category: '', // single category for content
+    content: existingPost?.content || '',
+    scheduledFor: existingPost?.scheduledFor ? new Date(existingPost.scheduledFor).toISOString().slice(0, 16) : '',
+    category: existingPost?.category || '',
   });
   const [mediaFile, setMediaFile] = useState(null);
   const [postLoading, setPostLoading] = useState(false);
 
-  // Example content categories
   const categories = [
     { label: 'Marketing', value: 'marketing' },
     { label: 'News', value: 'news' },
@@ -674,16 +653,24 @@ const PostCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
     }
 
     try {
-      console.log('[DEBUG] Post Creation: Attempting to post content.');
-      await axios.post('/posts', data, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      notify('success', 'Post created successfully.');
+      if (existingPost) {
+        // Update existing post
+        await axios.put(`/posts/${existingPost._id}`, data, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        notify('success', 'Post updated successfully.');
+      } else {
+        // Create new post
+        await axios.post('/posts', data, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        notify('success', 'Post created successfully.');
+      }
+      
       onSuccess();
     } catch (err) {
-      console.error('[ERROR] Post creation error:', err.response?.data || err.message);
-      notify('error', err.response?.data?.message || 'Failed to create post.');
+      console.error('[ERROR] Post operation error:', err.response?.data || err.message);
+      notify('error', err.response?.data?.message || `Failed to ${existingPost ? 'update' : 'create'} post.`);
     } finally {
       setPostLoading(false);
     }
@@ -693,14 +680,15 @@ const PostCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6">
         <div className="flex justify-between items-center border-b pb-3 mb-4">
-          <h3 className="text-xl font-semibold">Schedule New Post</h3>
+          <h3 className="text-xl font-semibold">
+            {existingPost ? 'Edit Post' : 'Schedule New Post'}
+          </h3>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-800">
             <X size={24} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Content */}
           <textarea
             placeholder="Post content..."
             value={formData.content}
@@ -709,7 +697,6 @@ const PostCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
             className="w-full p-3 border rounded-lg h-32 resize-none focus:ring-indigo-500 focus:border-indigo-500"
           />
 
-          {/* Category Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Select Category
@@ -732,7 +719,6 @@ const PostCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
             </div>
           </div>
 
-          {/* Schedule Date */}
           <div className="flex space-x-4 items-center">
             <label className="text-gray-700">Schedule Date (Optional):</label>
             <input
@@ -743,39 +729,53 @@ const PostCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
             />
           </div>
 
-          {/* Media */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Media 
             </label>
-             <p className="text-xs text-gray-500 mt-1">
-    Recommended size: <strong>500px × 300px</strong>
-  </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Recommended size: <strong>500px × 300px</strong>
+            </p>
             <input
               type="file"
               accept="image/*,video/*"
               onChange={(e) => setMediaFile(e.target.files[0])}
               className="w-full text-sm text-gray-500 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
             />
+            {existingPost?.mediaUrl && !mediaFile && (
+              <div className="mt-2">
+                <p className="text-sm text-gray-600">Current Media:</p>
+                <img 
+                  src={existingPost.mediaUrl} 
+                  alt="Current post media" 
+                  className="w-32 h-32 object-cover rounded-lg mt-1"
+                />
+              </div>
+            )}
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={postLoading || !formData.category}
             className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
           >
-            {postLoading ? 'Creating...' : 'Create Post'}
+            {postLoading 
+              ? (existingPost ? 'Updating...' : 'Creating...') 
+              : (existingPost ? 'Update Post' : 'Create Post')}
           </button>
         </form>
       </div>
     </div>
   );
 };
-const CommentSection = ({ postId, comments, setComments, notify, currentUser }) => {
+
+
+const CommentSection = ({ postId, comments = [], setComments, notify, currentUser }) => {
   const [newCommentText, setNewCommentText] = useState('');
   const [isCommenting, setIsCommenting] = useState(false);
-  
+  const [deletingId, setDeletingId] = useState(null);
+
+  // -------------------- ADD COMMENT --------------------
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
     if (!currentUser) return notify('info', "Please log in to comment.");
@@ -783,16 +783,19 @@ const CommentSection = ({ postId, comments, setComments, notify, currentUser }) 
 
     setIsCommenting(true);
     try {
-      const res = await axios.post(`/post/${postId}/comment`, { 
-        userId: currentUser._id, 
-        text: newCommentText.trim() 
+      const res = await axios.post(`/post/${postId}/comment`, {
+        userId: currentUser._id,
+        text: newCommentText.trim()
       });
-      
-      const newComment = { 
-        ...res.data.comment, 
-        userId: { name: `${currentUser.firstName} ${currentUser.lastName}` } 
-      }; 
-      
+
+      const newComment = {
+        ...res.data.comment,
+        userId: { 
+          _id: currentUser._id, 
+          name: `${currentUser.firstName} ${currentUser.lastName}` 
+        }
+      };
+
       setComments(prev => [...prev, newComment]);
       setNewCommentText('');
       notify('success', 'Comment added!');
@@ -802,42 +805,87 @@ const CommentSection = ({ postId, comments, setComments, notify, currentUser }) 
       setIsCommenting(false);
     }
   };
-  
+
+  // -------------------- DELETE COMMENT --------------------
+  const handleDeleteComment = async (commentId) => {
+    if (!currentUser) return notify("info", "Please log in first.");
+
+    const confirmed = window.confirm("Delete this comment?");
+    if (!confirmed) return;
+
+    setDeletingId(commentId);
+
+    try {
+      await axios.delete(`/api/post/${postId}/comment/${commentId}`);
+
+      setComments(prev => prev.filter(c => c._id !== commentId));
+      notify('success', 'Comment deleted!');
+    } catch (err) {
+      notify('error', 'Failed to delete comment.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
-    <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+    <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
       <h4 className="text-md font-semibold text-gray-700">
         Comments ({comments.length})
       </h4>
+
+      {/* IF NO COMMENTS */}
+      {comments.length === 0 && (
+        <p className="text-gray-500 text-sm italic">No comments yet. Be the first to comment!</p>
+      )}
+
+      {/* COMMENTS LIST */}
       <div className="max-h-60 overflow-y-auto space-y-3 pr-2">
-        {comments.map((comment, index) => (
-          <div key={index} className="p-3 bg-gray-50 rounded-lg text-sm">
+        {comments.map(comment => (
+          <div key={comment._id} className="p-3 bg-gray-50 rounded-lg text-sm relative">
             <p className="font-medium text-gray-800">
-              {comment.userId?.name || 'User'}
+              {comment?.userId?.name || "User"}
             </p>
+
             <p className="text-gray-600 mt-1">{comment.text}</p>
+
+            {/* DELETE BUTTON (SHOWN ONLY IF USER OWNS THE COMMENT) */}
+            {currentUser && comment?.userId?._id === currentUser._id && (
+              <button
+                onClick={() => handleDeleteComment(comment._id)}
+                disabled={deletingId === comment._id}
+                className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+              >
+                {deletingId === comment._id ? "..." : <Trash2 size={18} />}
+              </button>
+            )}
           </div>
         ))}
       </div>
-      
+
+      {/* ADD COMMENT INPUT */}
       <form onSubmit={handleCommentSubmit} className="flex space-x-2 pt-2">
         <input
-          type="text" 
+          type="text"
           placeholder="Add a comment..."
-          value={newCommentText} 
+          value={newCommentText}
           onChange={(e) => setNewCommentText(e.target.value)}
           className="flex-grow p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
         />
+
         <button
-          type="submit" 
+          type="submit"
           disabled={isCommenting || !currentUser}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
         >
-          {isCommenting ? '...' : 'Send'}
+          {isCommenting ? "..." : "Send"}
         </button>
       </form>
     </div>
   );
 };
+
+
+
 const LikesModal = ({ likesList, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
@@ -872,15 +920,17 @@ const LikesModal = ({ likesList, onClose }) => {
     </div>
   );
 };
-const PostCard = ({ post, notify, currentUser, onDelete }) => {
+const PostCard = ({ post, notify, currentUser, onDelete, onEdit }) => {
   const [likes, setLikes] = useState(post.likesCount || 0);
   const [likesList, setLikesList] = useState(post.likesList || []);
   const [showLikes, setShowLikes] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
-  const [comments, setComments] = useState(post.commentsList || []);
+
+  // COMMENTS
+  const [comments, setComments] = useState([]);  
   const [showComments, setShowComments] = useState(false);
 
-  // ✅ Check if current user has liked this post
+  // ---------------- CHECK LIKE STATUS ----------------
   const checkLikeStatus = async () => {
     if (!currentUser) return;
     try {
@@ -895,143 +945,171 @@ const PostCard = ({ post, notify, currentUser, onDelete }) => {
     checkLikeStatus();
   }, [post._id, currentUser]);
 
-  // ✅ Fetch comments for this post
+  // ---------------- FETCH COMMENTS ----------------
   const fetchComments = async () => {
     try {
       const res = await axios.get(`/post/${post._id}/comments`);
       setComments(res.data.comments || []);
     } catch (err) {
-      notify('error', 'Failed to fetch comments.');
+      notify("error", "Failed to fetch comments.");
     }
   };
 
-  // ✅ Handle like/unlike
+  // ---------------- LIKE HANDLE ----------------
   const handleLike = async () => {
     if (!currentUser) return notify("info", "Please log in to interact with posts.");
 
     try {
       const res = await axios.post(`/post/${post._id}/like`, { userId: currentUser._id });
+
       setLikes(res.data.likesCount);
       setIsLiked(res.data.isLiked);
 
-      // Refresh likes list after like/unlike
+      // UPDATE LIKE LIST
       const updated = await axios.get(`/post/${post.business}`);
       const current = updated.data.posts.find(p => p._id === post._id);
       if (current) setLikesList(current.likesList);
 
-      notify('success', res.data.isLiked ? 'Post liked!' : 'Post unliked!');
+      notify("success", res.data.isLiked ? "Post liked!" : "Post unliked!");
     } catch (err) {
-      notify('error', 'Failed to toggle like.');
+      notify("error", "Failed to toggle like.");
     }
   };
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 relative">
-      {/* ✅ Delete button (only show for post owner or business owner) */}
-      {currentUser && post.user === currentUser._id && (
-        <button
-          onClick={() => onDelete(post._id)}
-          className="absolute top-3 right-3 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 shadow-md transition"
-          title="Delete Post"
-        >
-          ✕
-        </button>
+      
+      {/* Edit / Delete */}
+      {currentUser && (post.user === currentUser._id || post.business === currentUser._id) && (
+        <div className="absolute top-3 right-3 flex space-x-2">
+          <button
+            onClick={() => onEdit(post)}
+            className="bg-blue-500 hover:bg-blue-600 text-white rounded-full p-2 shadow-md transition"
+            title="Edit Post"
+          >
+            <Edit size={16} />
+          </button>
+          <button
+            onClick={() => onDelete(post._id)}
+            className="bg-red-500 hover:bg-red-600 text-white rounded-full p-2 shadow-md transition"
+            title="Delete Post"
+          >
+            <X size={16} />
+          </button>
+        </div>
       )}
 
+      {/* MEDIA */}
       {post.mediaUrl && (
         <div className="mb-4">
-          <img 
-            src={`${post.mediaUrl}`} 
-            alt="Post Media" 
-            className="w-full h-80 object-cover rounded-lg" 
-            onError={(e) => { 
-              e.target.src = 'https://placehold.co/600x400/CCCCCC/333333?text=Image+Not+Found'; 
+          <img
+            src={post.mediaUrl}
+            alt="Post Media"
+            className="w-full h-80 object-cover rounded-lg"
+            onError={(e) => {
+              e.target.src =
+                "https://placehold.co/600x400/CCCCCC/333333?text=Image+Not+Found";
             }}
           />
         </div>
       )}
 
+      {/* CONTENT */}
       <p className="text-gray-800 mb-3">{post.content}</p>
 
+      {/* DATE */}
       <div className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
         <Clock size={16} />
         <span>{new Date(post.createdAt).toLocaleString()}</span>
       </div>
 
+      {/* LIKE + COMMENT BUTTONS */}
       <div className="flex items-center justify-between border-t pt-4">
         <div className="flex space-x-4">
-          <button 
-            onClick={handleLike} 
+
+          {/* LIKE BTN */}
+          <button
+            onClick={handleLike}
             className="flex items-center text-sm font-medium hover:text-red-500 transition"
           >
-            <Heart 
-              size={20} 
-              className={`mr-1 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} 
+            <Heart
+              size={20}
+              className={`mr-1 ${
+                isLiked ? "fill-red-500 text-red-500" : "text-gray-400"
+              }`}
             />
             {likes} Likes
           </button>
 
+          {/* LIKE LIST VIEW */}
           {likes > 0 && (
-            <button 
-              onClick={() => setShowLikes(true)} 
+            <button
+              onClick={() => setShowLikes(true)}
               className="text-sm text-blue-600 underline hover:text-blue-800"
             >
               View
             </button>
           )}
 
-          <button 
-            onClick={() => { 
-              setShowComments(!showComments); 
-              if (!showComments) fetchComments(); 
-            }} 
+          {/* COMMENT BTN - NOW SHOWS LIVE COUNT */}
+          <button
+            onClick={() => {
+              setShowComments(!showComments);
+              if (!showComments) fetchComments();
+            }}
             className="flex items-center text-sm font-medium hover:text-blue-500 transition"
           >
             <MessageCircle size={20} className="mr-1 text-gray-400" />
-            {post.commentsCount || 0} Comments
+            {comments.length} Comments
           </button>
+
         </div>
       </div>
 
+      {/* COMMENTS SECTION */}
       {showComments && (
-        <CommentSection 
-          postId={post._id} 
-          comments={comments} 
-          setComments={setComments} 
-          notify={notify} 
+        <CommentSection
+          postId={post._id}
+          comments={comments}
+          setComments={setComments}
+          notify={notify}
           currentUser={currentUser}
         />
       )}
 
+      {/* LIKES MODAL */}
       {showLikes && (
-        <LikesModal 
-          likesList={likesList} 
-          onClose={() => setShowLikes(false)} 
+        <LikesModal
+          likesList={likesList}
+          onClose={() => setShowLikes(false)}
         />
       )}
     </div>
   );
 };
+
+
+
 const PostsScreen = ({ business, currentUser, notify }) => {
   const [posts, setPosts] = useState([]);
   const [isPostFormOpen, setIsPostFormOpen] = useState(false);
+  const [editingPost, setEditingPost] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const businessId = business?._id;
-
   const fetchPosts = useCallback(async () => {
     if (!businessId) {
       setLoading(false);
       return;
     }
-    
+
     setLoading(true);
     try {
       const res = await axios.get(`/post/${businessId}`);
       setPosts(res.data.posts || []);
     } catch (error) {
-      console.error('Failed to fetch posts:', error.response?.data || error.message);
-      notify('error', 'Failed to fetch posts.');
+      console.error("Failed to fetch posts:", error?.response?.data || error.message);
+      notify("error", "Failed to fetch posts.");
     } finally {
       setLoading(false);
     }
@@ -1041,23 +1119,51 @@ const PostsScreen = ({ business, currentUser, notify }) => {
     if (businessId) fetchPosts();
   }, [businessId, fetchPosts]);
 
+  /** -----------------------------------------------------
+   *  CREATE/UPDATE POST
+   * ------------------------------------------------------*/
   const handlePostCreated = () => {
     setIsPostFormOpen(false);
+    setEditingPost(null);
     fetchPosts();
   };
 
-  // ✅ Delete post handler
+  const handleEditPost = (post) => {
+    setEditingPost(post);
+    setIsPostFormOpen(true);
+  };
+
+  /** -----------------------------------------------------
+   *  DELETE POST
+   * ------------------------------------------------------*/
   const handleDeletePost = async (postId) => {
     const confirmed = window.confirm("Are you sure you want to delete this post?");
     if (!confirmed) return;
 
     try {
       await axios.delete(`/post/${postId}`);
-      notify('success', 'Post deleted successfully.');
-      setPosts(prev => prev.filter(p => p._id !== postId));
+      notify("success", "Post deleted successfully.");
+      setPosts((prev) => prev.filter((p) => p._id !== postId));
     } catch (error) {
-      console.error('Delete post failed:', error.response?.data || error.message);
-      notify('error', 'Failed to delete post.');
+      console.error("Delete post failed:", error?.response?.data || error.message);
+      notify("error", "Failed to delete post.");
+    }
+  };
+
+  /** -----------------------------------------------------
+   *  DELETE COMMENT (NEW)
+   * ------------------------------------------------------*/
+  const handleDeleteComment = async (postId, commentId) => {
+    const confirmed = window.confirm("Delete this comment?");
+    if (!confirmed) return;
+
+    try {
+      await axios.delete(`http://localhost:5000/api/post/${postId}/comment/${commentId}`);
+      notify("success", "Comment deleted.");
+      fetchPosts();
+    } catch (error) {
+      console.error("Delete commentss failed:", error?.response?.data || error.message);
+      notify("error", "Failedgg to delete comment.");
     }
   };
 
@@ -1065,53 +1171,68 @@ const PostsScreen = ({ business, currentUser, notify }) => {
 
   return (
     <div className="p-6 bg-gray-50 min-h-full rounded-lg">
+      {/* Header */}
       <div className="flex justify-between items-center mb-6 border-b pb-3">
         <h1 className="text-2xl font-bold text-gray-800 flex items-center">
           <Image className="mr-2" /> Content Manager
         </h1>
-        <button 
-          onClick={() => setIsPostFormOpen(true)} 
+
+        {/* New Post Button */}
+        <button
+          onClick={() => {
+            setEditingPost(null);
+            setIsPostFormOpen(true);
+          }}
           className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
         >
           <Plus size={20} className="mr-1" /> New Post
         </button>
       </div>
 
+      {/* Post Create/Edit Form */}
       {isPostFormOpen && (
-        <PostCreateForm 
-          businessId={businessId} 
-          onClose={() => setIsPostFormOpen(false)} 
+        <PostCreateForm
+          businessId={businessId}
+          onClose={() => {
+            setIsPostFormOpen(false);
+            setEditingPost(null);
+          }}
           onSuccess={handlePostCreated}
           notify={notify}
+          existingPost={editingPost}
         />
       )}
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-  {posts.length > 0 ? posts.map(post => (
-    <PostCard
-      key={post._id}
-      post={post}
-      notify={notify}
-      currentUser={currentUser}
-      onDelete={handleDeletePost}
-    />
-  )) : (
-    <div className="col-span-2">
-      <p className="text-center text-gray-500 p-8 bg-white rounded-xl shadow">
-        No posts found for this business.
-      </p>
-    </div>
-  )}
-</div>
 
+      {/* Posts List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        {posts.length > 0 ? (
+          posts.map((post) => (
+            <PostCard
+              key={post._id}
+              post={post}
+              notify={notify}
+              currentUser={currentUser}
+              onDelete={handleDeletePost}
+              onEdit={handleEditPost}
+              onDeleteComment={handleDeleteComment} // NEW
+            />
+          ))
+        ) : (
+          <div className="col-span-2">
+            <p className="text-center text-gray-500 p-8 bg-white rounded-xl shadow">
+              No posts found for this business.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
-const ProductCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
+const ProductCreateForm = ({ businessId, onClose, onSuccess, notify, existingProduct }) => {
   const [formData, setFormData] = useState({ 
-    name: '', 
-    productLink: '', 
-    price: '' 
+    name: existingProduct?.name || '', 
+    productLink: existingProduct?.productLink || '', 
+    price: existingProduct?.price || '' 
   });
   const [imageFile, setImageFile] = useState(null);
   const [prodLoading, setProdLoading] = useState(false);
@@ -1130,16 +1251,24 @@ const ProductCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
     }
 
     try {
-      console.log('[DEBUG] Product Creation: Attempting to create product.');
-      await axios.post('/products', data, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      notify('success', 'Product created successfully.');
+      if (existingProduct) {
+        // Update existing product
+        await axios.put(`/products/${existingProduct._id}`, data, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        notify('success', 'Product updated successfully.');
+      } else {
+        // Create new product
+        await axios.post('/products', data, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        notify('success', 'Product created successfully.');
+      }
+      
       onSuccess();
     } catch (err) {
-      console.error('[ERROR] Product creation error:', err.response?.data);
-      notify('error', err.response?.data?.message || 'Failed to create product.');
+      console.error('[ERROR] Product operation error:', err.response?.data);
+      notify('error', err.response?.data?.message || `Failed to ${existingProduct ? 'update' : 'create'} product.`);
     } finally {
       setProdLoading(false);
     }
@@ -1149,7 +1278,9 @@ const ProductCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
         <div className="flex justify-between items-center border-b pb-3 mb-4">
-          <h3 className="text-xl font-semibold">Create New Product</h3>
+          <h3 className="text-xl font-semibold">
+            {existingProduct ? 'Edit Product' : 'Create New Product'}
+          </h3>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-800">
             <X size={24} />
           </button>
@@ -1165,7 +1296,7 @@ const ProductCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
           />
           <input 
             type="text" 
-            placeholder="Product Link " 
+            placeholder="Product Link" 
             value={formData.productLink}
             onChange={(e) => setFormData({...formData, productLink: e.target.value})}
             className="w-full p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
@@ -1181,32 +1312,44 @@ const ProductCreateForm = ({ businessId, onClose, onSuccess, notify }) => {
           />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Product Image (Required)
+              Product Image {!existingProduct && '(Required)'}
             </label>
-                         <p className="text-xs text-gray-500 mt-1">
-    Recommended size: <strong>300px × 300px</strong>
-  </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Recommended size: <strong>300px × 300px</strong>
+            </p>
             <input 
               type="file" 
-              required 
+              required={!existingProduct}
               accept="image/*" 
               onChange={(e) => setImageFile(e.target.files[0])}
               className="w-full text-sm text-gray-500 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
             />
+            {existingProduct?.image?.url && !imageFile && (
+              <div className="mt-2">
+                <p className="text-sm text-gray-600">Current Image:</p>
+                <img 
+                  src={existingProduct.image.url} 
+                  alt="Current product" 
+                  className="w-32 h-32 object-cover rounded-lg mt-1"
+                />
+              </div>
+            )}
           </div>
           <button 
             type="submit" 
             disabled={prodLoading}
             className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
           >
-            {prodLoading ? 'Adding Product...' : 'Add Product'}
+            {prodLoading 
+              ? (existingProduct ? 'Updating...' : 'Adding Product...') 
+              : (existingProduct ? 'Update Product' : 'Add Product')}
           </button>
         </form>
       </div>
     </div>
   );
 };
-const ProductCard = ({ product, onDelete }) => (
+const ProductCard = ({ product, onDelete, onEdit }) => (
   <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 relative">
     <img
       src={`${product.image?.url || '/uploads/default.png'}`}
@@ -1217,19 +1360,28 @@ const ProductCard = ({ product, onDelete }) => (
       }}
     />
 
-    {/* Delete button (top-right corner) */}
-    <button
-      onClick={() => onDelete(product._id)}
-      className="absolute top-3 right-3 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 shadow-md transition"
-      title="Delete Product"
-    >
-      ✕
-    </button>
+    {/* Edit and Delete buttons */}
+    <div className="absolute top-3 right-3 flex space-x-2">
+      <button
+        onClick={() => onEdit(product)}
+        className="bg-blue-500 hover:bg-blue-600 text-white rounded-full p-2 shadow-md transition"
+        title="Edit Product"
+      >
+        <Edit size={16} />
+      </button>
+      <button
+        onClick={() => onDelete(product._id)}
+        className="bg-red-500 hover:bg-red-600 text-white rounded-full p-2 shadow-md transition"
+        title="Delete Product"
+      >
+        <X size={16} />
+      </button>
+    </div>
 
     <div className="p-4">
       <h3 className="text-lg font-semibold text-gray-800 truncate">{product.name}</h3>
       <p className="text-2xl font-bold text-indigo-600 mt-1 mb-3">
-        ${(product.price || 0).toFixed(2)}
+        ₹{(product.price || 0).toFixed(2)}
       </p>
       <div className="flex justify-between text-sm text-gray-600">
         <span>SKU: {product.sku}</span>
@@ -1240,9 +1392,12 @@ const ProductCard = ({ product, onDelete }) => (
     </div>
   </div>
 );
+
+// UPDATED: ProductsScreen with edit functionality
 const ProductsScreen = ({ business, notify }) => {
   const [products, setProducts] = useState([]);
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   
   const businessId = business?._id;
@@ -1271,10 +1426,15 @@ const ProductsScreen = ({ business, notify }) => {
 
   const handleProductCreated = () => {
     setIsProductFormOpen(false);
+    setEditingProduct(null);
     fetchProducts();
   };
 
-  // ✅ Delete product handler
+  const handleEditProduct = (product) => {
+    setEditingProduct(product);
+    setIsProductFormOpen(true);
+  };
+
   const handleDeleteProduct = async (productId) => {
     const confirmed = window.confirm("Are you sure you want to delete this product?");
     if (!confirmed) return;
@@ -1298,7 +1458,10 @@ const ProductsScreen = ({ business, notify }) => {
           <ShoppingBag className="mr-2" /> Product Listing
         </h1>
         <button 
-          onClick={() => setIsProductFormOpen(true)} 
+          onClick={() => {
+            setEditingProduct(null);
+            setIsProductFormOpen(true);
+          }} 
           className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
         >
           <Plus size={20} className="mr-1" /> New Product
@@ -1308,15 +1471,24 @@ const ProductsScreen = ({ business, notify }) => {
       {isProductFormOpen && (
         <ProductCreateForm 
           businessId={businessId}
-          onClose={() => setIsProductFormOpen(false)} 
+          onClose={() => {
+            setIsProductFormOpen(false);
+            setEditingProduct(null);
+          }} 
           onSuccess={handleProductCreated}
           notify={notify}
+          existingProduct={editingProduct}
         />
       )}
       
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-6">
         {products.length > 0 ? products.map(product => (
-          <ProductCard key={product._id} product={product} onDelete={handleDeleteProduct} />
+          <ProductCard 
+            key={product._id} 
+            product={product} 
+            onDelete={handleDeleteProduct}
+            onEdit={handleEditProduct}
+          />
         )) : (
           <p className="col-span-4 text-center text-gray-500 p-8 bg-white rounded-xl shadow">
             No products listed.
@@ -1326,6 +1498,8 @@ const ProductsScreen = ({ business, notify }) => {
     </div>
   );
 };
+
+// UPDATED: PromotionCreateForm (already had editing functionality)
 const PromotionCreateForm = ({
   businessId,
   onClose,
@@ -1377,7 +1551,6 @@ const PromotionCreateForm = ({
     const data = new FormData();
     data.append("businessId", businessId);
 
-    // Append all form data
     Object.keys(formData).forEach((key) => {
       if (key === "platforms") {
         formData[key].forEach((platform) => data.append("platforms", platform));
@@ -1446,7 +1619,6 @@ const PromotionCreateForm = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 p-6">
-          {/* Name */}
           <input
             type="text"
             placeholder="Promotion Name"
@@ -1458,7 +1630,6 @@ const PromotionCreateForm = ({
             className="w-full p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
           />
 
-          {/* Description */}
           <textarea
             placeholder="Description"
             value={formData.description}
@@ -1469,7 +1640,6 @@ const PromotionCreateForm = ({
             className="w-full p-3 border rounded-lg h-20 resize-none focus:ring-indigo-500 focus:border-indigo-500"
           />
 
-          {/* Display Type */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Display Type
@@ -1486,7 +1656,6 @@ const PromotionCreateForm = ({
             </select>
           </div>
 
-          {/* Link */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Promotion Link
@@ -1502,7 +1671,6 @@ const PromotionCreateForm = ({
             />
           </div>
 
-          {/* Dates */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1533,8 +1701,6 @@ const PromotionCreateForm = ({
             </div>
           </div>
 
-
-          {/* Status */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Status
@@ -1553,23 +1719,31 @@ const PromotionCreateForm = ({
             </select>
           </div>
 
-          {/* Image */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Promotion Image 
             </label>
-                         <p className="text-xs text-gray-500 mt-1">
-    Recommended size: <strong>300px × 300px</strong>
-  </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Recommended size: <strong>300px × 300px</strong>
+            </p>
             <input
               type="file"
               accept="image/*"
               onChange={(e) => setImageFile(e.target.files[0])}
               className="w-full text-sm text-gray-500 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
             />
+            {existingPromotion?.image && !imageFile && (
+              <div className="mt-2">
+                <p className="text-sm text-gray-600">Current Image:</p>
+                <img 
+                  src={existingPromotion.image} 
+                  alt="Current promotion" 
+                  className="w-32 h-32 object-cover rounded-lg mt-1"
+                />
+              </div>
+            )}
           </div>
 
-          {/* Submit */}
           <button
             type="submit"
             disabled={promoLoading}
@@ -1586,6 +1760,7 @@ const PromotionCreateForm = ({
     </div>
   );
 };
+
 const PromotionCard = ({ promotion, onEdit, notify, onStatusChange, onDelete }) => {
   const [isActive, setIsActive] = useState(promotion.status === "active");
   const [loading, setLoading] = useState(false);
@@ -1610,7 +1785,6 @@ const PromotionCard = ({ promotion, onEdit, notify, onStatusChange, onDelete }) 
       : `₹${promotion.discountValue} OFF`;
   };
 
-  // ✅ Toggle Active / Paused
   const togglePromotionStatus = async () => {
     setLoading(true);
     try {
@@ -1618,7 +1792,7 @@ const PromotionCard = ({ promotion, onEdit, notify, onStatusChange, onDelete }) 
       const res = await axios.patch(`/promotions/${promotion._id}`, { status: newStatus });
       setIsActive(res.data.promotion.status === "active");
       notify("success", `Promotion ${newStatus} successfully.`);
-      onStatusChange(); // refresh parent list
+      onStatusChange();
     } catch (err) {
       console.error(err);
       notify("error", "Failed to update promotion status.");
@@ -1627,7 +1801,6 @@ const PromotionCard = ({ promotion, onEdit, notify, onStatusChange, onDelete }) 
     }
   };
 
-  // ✅ Delete Promotion
   const handleDelete = async () => {
     if (!window.confirm("Are you sure you want to delete this promotion?")) return;
     setDeleting(true);
@@ -1759,6 +1932,7 @@ const PromotionCard = ({ promotion, onEdit, notify, onStatusChange, onDelete }) 
     </div>
   );
 };
+
 const PromotionsScreen = ({ business, notify }) => {
   const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1821,7 +1995,6 @@ const PromotionsScreen = ({ business, notify }) => {
         </button>
       </div>
 
-      {/* Filter Tabs */}
       <div className="mb-6">
         <div className="flex space-x-2 overflow-x-auto pb-2">
           {["all", "active", "scheduled", "paused", "draft", "expired"].map((status) => (
@@ -1898,6 +2071,7 @@ const PromotionsScreen = ({ business, notify }) => {
     </div>
   );
 };
+
 const Sidebar = ({ currentPage, onPageChange, business, onLogout, isOpen, onClose }) => {
   const navItems = [
     { name: 'Dashboard', page: 'dashboard', icon: Home },
@@ -1916,7 +2090,6 @@ const Sidebar = ({ currentPage, onPageChange, business, onLogout, isOpen, onClos
         isOpen ? 'translate-x-0' : '-translate-x-full'
       } lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out bg-white w-64 p-5 shadow-xl z-30 flex flex-col justify-between`}
     >
-      {/* --- Top Section --- */}
       <div>
         <div className="flex justify-between items-center mb-10">
           <h1 className="text-2xl font-extrabold text-indigo-600">SocialDash</h1>
@@ -1949,7 +2122,6 @@ const Sidebar = ({ currentPage, onPageChange, business, onLogout, isOpen, onClos
         </nav>
       </div>
 
-      {/* --- Bottom Section --- */}
       <div className="border-t pt-4">
         <div className="flex items-center mb-3">
           <Briefcase size={20} className="mr-2 text-gray-500" />
@@ -1968,6 +2140,7 @@ const Sidebar = ({ currentPage, onPageChange, business, onLogout, isOpen, onClos
     </div>
   );
 };
+
 const App = () => {
   const [token, setToken] = useState(localStorage.getItem('token') || null);
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || 'null'));
@@ -2041,11 +2214,8 @@ const App = () => {
         handleLogout();
         notify('error', 'Session expired. Please log in again.');
       } else if (error.response?.status !== 404) {
-        // 404 might mean no business exists yet, which is expected for a new owner.
-        // Other errors need a notification.
         notify('error', 'Network error or unhandled server error. Please try again.');
       } else {
-        // Force new business creation screen if 404
         setCurrentPage('business-profile');
       }
     } finally {
@@ -2077,7 +2247,6 @@ const App = () => {
       setToken(newToken);
       setUser(newUser);
       
-      // Re-run the main check logic to fetch business data and navigate
       checkAuthAndBusiness();
     }
     notify(type, message);

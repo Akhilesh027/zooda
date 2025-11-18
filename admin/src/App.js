@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-// API Configuration
-const API_BASE = 'https://api.zooda.in/api';
+const API_BASE = 'http://localhost:5000/api';
 
-// Main App Component
 function App() {
   const [adminData, setAdminData] = useState({
     pendingBusinesses: [],
     approvedBusinesses: [],
     platformStats: null,
     businessAnalytics: [],
-    categories: [] 
+    categories: [],
+    allBusinesses: []
   });
   const [adminLoading, setAdminLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
@@ -40,7 +39,6 @@ function App() {
       const response = await fetch(`${API_BASE}${endpoint}`, config);
       
       if (response.status === 401) {
-        // Handle admin logout if needed
         return { success: false, error: 'Session expired' };
       }
 
@@ -56,37 +54,42 @@ function App() {
     }
   };
 
- const loadAdminData = async () => {
-  setAdminLoading(true);
-  try {
-    const [pendingResult, approvedResult, statsResult, analyticsResult, categoriesResult] = await Promise.all([
-      makeAPIRequest('/admin/businesses?status=pending'),
-      makeAPIRequest('/admin/businesses?status=approved'),
-      makeAPIRequest('/admin/stats'),
-      makeAPIRequest('/admin/analytics/businesses'),
-      makeAPIRequest('/admin/categories') // Load categories
-    ]);
+  const loadAdminData = async () => {
+    setAdminLoading(true);
+    try {
+      const [pendingResult, approvedResult, statsResult, analyticsResult, categoriesResult, allBusinessesResult] = await Promise.all([
+        makeAPIRequest('/admin/businesses?status=pending'),
+        makeAPIRequest('/admin/businesses?status=approved'),
+        makeAPIRequest('/admin/stats'),
+        makeAPIRequest('/admin/analytics/businesses'),
+        makeAPIRequest('/admin/categories'),
+        makeAPIRequest('/admin/businesses')
+      ]);
 
-    setAdminData({
-      pendingBusinesses: pendingResult.success ? pendingResult.data : getMockPendingBusinesses(),
-      approvedBusinesses: approvedResult.success ? approvedResult.data : getMockApprovedBusinesses(),
-      platformStats: statsResult.success ? statsResult.data : getMockPlatformStats(),
-      businessAnalytics: analyticsResult.success ? analyticsResult.data : getMockBusinessAnalytics(),
-      categories: categoriesResult.success ? categoriesResult.data : getMockCategories()
-    });
-  } catch (error) {
-    console.error('Error loading admin data:', error);
-    setAdminData({
-      pendingBusinesses: getMockPendingBusinesses(),
-      approvedBusinesses: getMockApprovedBusinesses(),
-      platformStats: getMockPlatformStats(),
-      businessAnalytics: getMockBusinessAnalytics(),
-      categories: getMockCategories()
-    });
-  } finally {
-    setAdminLoading(false);
-  }
-};
+      setAdminData({
+        pendingBusinesses: pendingResult.success ? pendingResult.data : [],
+        approvedBusinesses: approvedResult.success ? approvedResult.data : [],
+        platformStats: statsResult.success ? statsResult.data : null,
+        businessAnalytics: analyticsResult.success ? analyticsResult.data : [],
+        categories: categoriesResult.success ? categoriesResult.data : [],
+        allBusinesses: allBusinessesResult.success ? allBusinessesResult.data : []
+      });
+    } catch (error) {
+      console.error('Error loading admin data:', error);
+      setAdminData({
+        pendingBusinesses: [],
+        approvedBusinesses: [],
+        platformStats: null,
+        businessAnalytics: [],
+        categories: [],
+        allBusinesses: []
+      });
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
+  // Business Management Functions
   const approveBusiness = async (businessId) => {
     const result = await makeAPIRequest(`/admin/businesses/${businessId}/approve`, {
       method: 'PUT'
@@ -141,243 +144,149 @@ function App() {
     }
   };
 
-  // Mock data functions
-  const getMockPendingBusinesses = () => [
-    {
-      _id: '1',
-      businessName: 'Tech Solutions Inc',
-      businessCategory: 'Technology',
-      businessEmail: 'contact@techsolutions.com',
-      businessPhone: '+1234567890',
-      businessAddress: '123 Tech Street, San Francisco, CA',
-      businessDescription: 'Leading technology solutions provider specializing in AI and machine learning applications for businesses.',
-      status: 'pending',
-      createdAt: '2024-01-15',
-      user: { firstName: 'John', lastName: 'Doe', email: 'john@techsolutions.com' }
-    },
-    {
-      _id: '2',
-      businessName: 'Fashion Boutique',
-      businessCategory: 'Retail',
-      businessEmail: 'info@fashionboutique.com',
-      businessPhone: '+1234567891',
-      businessAddress: '456 Fashion Ave, New York, NY',
-      businessDescription: 'Trendy fashion and accessories for modern professionals. We offer sustainable and ethically sourced clothing.',
-      status: 'pending',
-      createdAt: '2024-01-16',
-      user: { firstName: 'Jane', lastName: 'Smith', email: 'jane@fashionboutique.com' }
-    },
-    {
-      _id: '3',
-      businessName: 'Organic Groceries',
-      businessCategory: 'Food & Beverage',
-      businessEmail: 'hello@organicgroceries.com',
-      businessPhone: '+1234567892',
-      businessAddress: '789 Green Lane, Portland, OR',
-      businessDescription: 'Fresh organic produce and groceries delivered to your doorstep. Supporting local farmers and sustainable agriculture.',
-      status: 'pending',
-      createdAt: '2024-01-17',
-      user: { firstName: 'Mike', lastName: 'Johnson', email: 'mike@organicgroceries.com' }
+  const deleteBusiness = async (businessId) => {
+    const result = await makeAPIRequest(`/admin/businesses/${businessId}`, {
+      method: 'DELETE'
+    });
+    
+    if (result.success) {
+      await loadAdminData();
+      alert('Business deleted successfully!');
+    } else {
+      alert('Error deleting business: ' + result.error);
     }
-  ];
+  };
 
-  const getMockApprovedBusinesses = () => [
-    {
-      _id: '4',
-      businessName: 'Coffee Corner',
-      businessCategory: 'Food & Beverage',
-      businessEmail: 'hello@coffeecorner.com',
-      businessPhone: '+1234567893',
-      businessAddress: '321 Brew Street, Seattle, WA',
-      businessDescription: 'Artisanal coffee and pastries made with locally sourced ingredients. Co-working space available.',
-      status: 'approved',
-      createdAt: '2024-01-10',
-      user: { firstName: 'Sarah', lastName: 'Wilson', email: 'sarah@coffeecorner.com' }
-    },
-    {
-      _id: '5',
-      businessName: 'Tech Gadgets',
-      businessCategory: 'Technology',
-      businessEmail: 'support@techgadgets.com',
-      businessPhone: '+1234567894',
-      businessAddress: '654 Innovation Drive, Austin, TX',
-      businessDescription: 'Latest tech gadgets and electronics. From smartphones to smart home devices.',
-      status: 'approved',
-      createdAt: '2024-01-08',
-      user: { firstName: 'David', lastName: 'Brown', email: 'david@techgadgets.com' }
-    },
-    {
-      _id: '6',
-      businessName: 'Fitness Center',
-      businessCategory: 'Health & Fitness',
-      businessEmail: 'info@fitnesscenter.com',
-      businessPhone: '+1234567895',
-      businessAddress: '987 Wellness Road, Miami, FL',
-      businessDescription: 'State-of-the-art fitness center with personal training and group classes. Open 24/7.',
-      status: 'suspended',
-      createdAt: '2024-01-05',
-      user: { firstName: 'Maria', lastName: 'Garcia', email: 'maria@fitnesscenter.com' }
+  const deletePost = async (businessId, postId) => {
+    const result = await makeAPIRequest(`/admin/businesses/${businessId}/posts/${postId}`, {
+      method: 'DELETE'
+    });
+    
+    if (result.success) {
+      alert('Post deleted successfully!');
+      return { success: true };
+    } else {
+      return { success: false, error: result.error };
     }
-  ];
+  };
 
-  const getMockPlatformStats = () => ({
-    totalBusinesses: 45,
-    pendingApprovals: 3,
-    totalPosts: 320,
-    totalProducts: 189,
-    totalPromotions: 67,
-    totalRevenue: 28450,
-    activeBusinesses: 42
-  });
-
-  const getMockBusinessAnalytics = () => [
-    {
-      businessId: '4',
-      businessName: 'Coffee Corner',
-      totalPosts: 15,
-      totalProducts: 8,
-      totalPromotions: 3,
-      totalEngagement: 245,
-      revenue: 1250,
-      growth: 12,
-      status: 'approved'
-    },
-    {
-      businessId: '5',
-      businessName: 'Tech Gadgets',
-      totalPosts: 28,
-      totalProducts: 15,
-      totalPromotions: 5,
-      totalEngagement: 567,
-      revenue: 3200,
-      growth: 8,
-      status: 'approved'
-    },
-    {
-      businessId: '6',
-      businessName: 'Fitness Center',
-      totalPosts: 42,
-      totalProducts: 12,
-      totalPromotions: 8,
-      totalEngagement: 892,
-      revenue: 5800,
-      growth: -5,
-      status: 'suspended'
-    },
-    {
-      businessId: '7',
-      businessName: 'Book Store',
-      totalPosts: 8,
-      totalProducts: 45,
-      totalPromotions: 2,
-      totalEngagement: 123,
-      revenue: 890,
-      growth: 15,
-      status: 'approved'
-    },
-    {
-      businessId: '8',
-      businessName: 'Restaurant',
-      totalPosts: 35,
-      totalProducts: 25,
-      totalPromotions: 12,
-      totalEngagement: 678,
-      revenue: 4250,
-      growth: 22,
-      status: 'approved'
+  const deleteProduct = async (businessId, productId) => {
+    const result = await makeAPIRequest(`/admin/businesses/${businessId}/products/${productId}`, {
+      method: 'DELETE'
+    });
+    
+    if (result.success) {
+      alert('Product deleted successfully!');
+      return { success: true };
+    } else {
+      return { success: false, error: result.error };
     }
-  ];
-  const getMockCategories = () => [
-  {
-    _id: '1',
-    name: 'Food & Beverage',
-    subcategories: [
-      { _id: '1-1', name: 'Restaurants' },
-      { _id: '1-2', name: 'Cafes' },
-      { _id: '1-3', name: 'Food Delivery' }
-    ]
-  },
-  {
-    _id: '2',
-    name: 'Retail',
-    subcategories: [
-      { _id: '2-1', name: 'Fashion' },
-      { _id: '2-2', name: 'Electronics' }
-    ]
-  },
-  {
-    _id: '3',
-    name: 'Services',
-    subcategories: [
-      { _id: '3-1', name: 'Beauty' },
-      { _id: '3-2', name: 'Home Services' }
-    ]
-  }
-];
-const createCategory = async (categoryName) => {
-  const result = await makeAPIRequest('/admin/categories', {
-    method: 'POST',
-    body: JSON.stringify({ name: categoryName })
-  });
-  
-  if (result.success) {
-    await loadAdminData();
-    return { success: true, message: 'Category created successfully!' };
-  } else {
-    return { success: false, error: result.error };
-  }
-};
+  };
 
-const deleteCategory = async (categoryId) => {
-  const result = await makeAPIRequest(`/admin/categories/${categoryId}`, {
-    method: 'DELETE'
-  });
-  
-  if (result.success) {
-    await loadAdminData();
-    return { success: true, message: 'Category deleted successfully!' };
-  } else {
-    return { success: false, error: result.error };
-  }
-};
+  const deletePromotion = async (businessId, promotionId) => {
+    const result = await makeAPIRequest(`/admin/businesses/${businessId}/promotions/${promotionId}`, {
+      method: 'DELETE'
+    });
+    
+    if (result.success) {
+      alert('Promotion deleted successfully!');
+      return { success: true };
+    } else {
+      return { success: false, error: result.error };
+    }
+  };
 
-const createSubcategory = async (categoryId, subcategoryName) => {
-  const result = await makeAPIRequest(`/admin/categories/${categoryId}/subcategories`, {
-    method: 'POST',
-    body: JSON.stringify({ name: subcategoryName })
-  });
-  
-  if (result.success) {
-    await loadAdminData();
-    return { success: true, message: 'Subcategory created successfully!' };
-  } else {
-    return { success: false, error: result.error };
-  }
-};
+  const updateBusiness = async (businessId, updateData) => {
+    const result = await makeAPIRequest(`/admin/businesses/${businessId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData)
+    });
+    
+    if (result.success) {
+      await loadAdminData();
+      alert('Business updated successfully!');
+    } else {
+      alert('Error updating business: ' + result.error);
+    }
+  };
 
-const deleteSubcategory = async (categoryId, subcategoryId) => {
-  const result = await makeAPIRequest(`/admin/categories/${categoryId}/subcategories/${subcategoryId}`, {
-    method: 'DELETE'
-  });
-  
-  if (result.success) {
-    await loadAdminData();
-    return { success: true, message: 'Subcategory deleted successfully!' };
-  } else {
-    return { success: false, error: result.error };
-  }
-};
+  // New functions to fetch business-specific data
+  const fetchBusinessPosts = async (businessId) => {
+    const result = await makeAPIRequest(`/post/${businessId}`);
+    return result.success ? result.data : [];
+  };
 
+  const fetchBusinessProducts = async (businessId) => {
+    const result = await makeAPIRequest(`/product/${businessId}`);
+    return result.success ? result.data : [];
+  };
 
-// Update loadAdminData to include categories
+  const fetchBusinessPromotions = async (businessId) => {
+    const result = await makeAPIRequest(`/promotions/${businessId}`);
+    return result.success ? result.data : [];
+  };
 
+  // Category Management Functions
+  const createCategory = async (categoryName) => {
+    const result = await makeAPIRequest('/admin/categories', {
+      method: 'POST',
+      body: JSON.stringify({ name: categoryName })
+    });
+    
+    if (result.success) {
+      await loadAdminData();
+      return { success: true, message: 'Category created successfully!' };
+    } else {
+      return { success: false, error: result.error };
+    }
+  };
+
+  const deleteCategory = async (categoryId) => {
+    const result = await makeAPIRequest(`/admin/categories/${categoryId}`, {
+      method: 'DELETE'
+    });
+    
+    if (result.success) {
+      await loadAdminData();
+      return { success: true, message: 'Category deleted successfully!' };
+    } else {
+      return { success: false, error: result.error };
+    }
+  };
+
+  const createSubcategory = async (categoryId, subcategoryName) => {
+    const result = await makeAPIRequest(`/admin/categories/${categoryId}/subcategories`, {
+      method: 'POST',
+      body: JSON.stringify({ name: subcategoryName })
+    });
+    
+    if (result.success) {
+      await loadAdminData();
+      return { success: true, message: 'Subcategory created successfully!' };
+    } else {
+      return { success: false, error: result.error };
+    }
+  };
+
+  const deleteSubcategory = async (categoryId, subcategoryId) => {
+    const result = await makeAPIRequest(`/admin/categories/${categoryId}/subcategories/${subcategoryId}`, {
+      method: 'DELETE'
+    });
+    
+    if (result.success) {
+      await loadAdminData();
+      return { success: true, message: 'Subcategory deleted successfully!' };
+    } else {
+      return { success: false, error: result.error };
+    }
+  };
 
   const adminTabs = [
     { id: 'overview', name: 'Overview', icon: 'fa-chart-bar' },
     { id: 'approvals', name: 'Business Approvals', icon: 'fa-building' },
     { id: 'analytics', name: 'Business Analytics', icon: 'fa-chart-line' },
-      { id: 'categories', name: 'Categories', icon: 'fa-tags' } // New tab
-
+    { id: 'categories', name: 'Categories', icon: 'fa-tags' },
+    { id: 'businesses', name: 'All Businesses', icon: 'fa-store' }
   ];
 
   const renderTabContent = () => {
@@ -418,16 +327,30 @@ const deleteSubcategory = async (categoryId, subcategoryId) => {
             businessAnalytics={adminData.businessAnalytics}
           />
         );
-         case 'categories':
-    return (
-      <CategoryManagementTab
-        categories={adminData.categories}
-        onCreateCategory={createCategory}
-        onDeleteCategory={deleteCategory}
-        onCreateSubcategory={createSubcategory}
-        onDeleteSubcategory={deleteSubcategory}
-      />
-    );
+      case 'categories':
+        return (
+          <CategoryManagementTab
+            categories={adminData.categories}
+            onCreateCategory={createCategory}
+            onDeleteCategory={deleteCategory}
+            onCreateSubcategory={createSubcategory}
+            onDeleteSubcategory={deleteSubcategory}
+          />
+        );
+      case 'businesses':
+        return (
+          <BusinessManagementTab
+            businesses={adminData.allBusinesses}
+            onDeleteBusiness={deleteBusiness}
+            onDeletePost={deletePost}
+            onDeleteProduct={deleteProduct}
+            onDeletePromotion={deletePromotion}
+            onUpdateBusiness={updateBusiness}
+            fetchBusinessPosts={fetchBusinessPosts}
+            fetchBusinessProducts={fetchBusinessProducts}
+            fetchBusinessPromotions={fetchBusinessPromotions}
+          />
+        );
       default:
         return <AdminOverviewTab stats={adminData.platformStats} />;
     }
@@ -435,7 +358,6 @@ const deleteSubcategory = async (categoryId, subcategoryId) => {
 
   return (
     <div className="app-layout">
-      {/* Overlay */}
       {sidebarOpen && (
         <div 
           className="overlay active" 
@@ -443,7 +365,6 @@ const deleteSubcategory = async (categoryId, subcategoryId) => {
         />
       )}
       
-      {/* Admin Sidebar */}
       <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-brand">
@@ -493,7 +414,6 @@ const deleteSubcategory = async (categoryId, subcategoryId) => {
         </div>
       </div>
       
-      {/* Main Content */}
       <div className="main-content">
         <header className="header">
           <div className="header-content">
@@ -540,7 +460,9 @@ function AdminOverviewTab({ stats }) {
       <div className="admin-overview">
         <div className="stats-grid">
           {[1,2,3,4,5,6].map(i => (
-            <div key={i} className="stat-skeleton"></div>
+            <div key={i} className="stat-skeleton">
+              <div className="skeleton-loader"></div>
+            </div>
           ))}
         </div>
       </div>
@@ -556,7 +478,7 @@ function AdminOverviewTab({ stats }) {
             <i className="fas fa-building stat-icon business-icon"></i>
           </div>
           <p className="stat-value">{stats.totalBusinesses}</p>
-          <p className="stat-trend positive">+8% growth</p>
+          <p className="stat-trend positive">Active businesses</p>
         </div>
         
         <div className="stat-card admin-stat">
@@ -574,7 +496,7 @@ function AdminOverviewTab({ stats }) {
             <i className="fas fa-newspaper stat-icon post-icon"></i>
           </div>
           <p className="stat-value">{stats.totalPosts}</p>
-          <p className="stat-trend positive">+15% growth</p>
+          <p className="stat-trend positive">Platform content</p>
         </div>
 
         <div className="stat-card admin-stat">
@@ -583,7 +505,7 @@ function AdminOverviewTab({ stats }) {
             <i className="fas fa-shopping-bag stat-icon product-icon"></i>
           </div>
           <p className="stat-value">{stats.totalProducts}</p>
-          <p className="stat-trend positive">+23% growth</p>
+          <p className="stat-trend positive">Business products</p>
         </div>
 
         <div className="stat-card admin-stat">
@@ -592,7 +514,7 @@ function AdminOverviewTab({ stats }) {
             <i className="fas fa-tag stat-icon promotion-icon"></i>
           </div>
           <p className="stat-value">{stats.totalPromotions}</p>
-          <p className="stat-trend positive">+18% growth</p>
+          <p className="stat-trend positive">Running promotions</p>
         </div>
 
         <div className="stat-card admin-stat">
@@ -601,7 +523,7 @@ function AdminOverviewTab({ stats }) {
             <i className="fas fa-dollar-sign stat-icon revenue-icon"></i>
           </div>
           <p className="stat-value">${stats.totalRevenue?.toLocaleString()}</p>
-          <p className="stat-trend positive">+25% growth</p>
+          <p className="stat-trend positive">Total revenue</p>
         </div>
       </div>
 
@@ -750,7 +672,6 @@ function AdminApprovalsTab({
                   </div>
                 </div>
 
-                {/* Reject Reason Modal */}
                 {showRejectModal === business._id && (
                   <div className="modal-overlay" onClick={() => setShowRejectModal(null)}>
                     <div className="modal-content small-modal" onClick={(e) => e.stopPropagation()}>
@@ -842,7 +763,6 @@ function AdminApprovalsTab({
             </tbody>
           </table>
 
-          {/* Suspend Business Modal */}
           {showSuspendModal && (
             <div className="modal-overlay" onClick={() => setShowSuspendModal(null)}>
               <div className="modal-content small-modal" onClick={(e) => e.stopPropagation()}>
@@ -926,7 +846,7 @@ function AdminAnalyticsTab({ businessAnalytics }) {
               <div key={business.businessId} className="top-business">
                 <span className="rank">{index + 1}</span>
                 <span className="name">{business.businessName}</span>
-                <span className="revenue">${business.revenue.toLocaleString()}</span>
+                <span className="revenue">${business.revenue?.toLocaleString() || 0}</span>
               </div>
             ))}
           </div>
@@ -940,13 +860,13 @@ function AdminAnalyticsTab({ businessAnalytics }) {
             </div>
             <div className="metric">
               <span className="value">
-                ${businessAnalytics.reduce((sum, biz) => sum + biz.revenue, 0).toLocaleString()}
+                ${businessAnalytics.reduce((sum, biz) => sum + (biz.revenue || 0), 0).toLocaleString()}
               </span>
               <span className="label">Total Revenue</span>
             </div>
             <div className="metric">
               <span className="value">
-                {businessAnalytics.reduce((sum, biz) => sum + biz.totalPosts, 0)}
+                {businessAnalytics.reduce((sum, biz) => sum + (biz.totalPosts || 0), 0)}
               </span>
               <span className="label">Total Posts</span>
             </div>
@@ -992,23 +912,23 @@ function AdminAnalyticsTab({ businessAnalytics }) {
                   </div>
                 </td>
                 <td>
-                  <span className="metric-value">{business.totalPosts}</span>
+                  <span className="metric-value">{business.totalPosts || 0}</span>
                 </td>
                 <td>
-                  <span className="metric-value">{business.totalProducts}</span>
+                  <span className="metric-value">{business.totalProducts || 0}</span>
                 </td>
                 <td>
-                  <span className="metric-value">{business.totalPromotions}</span>
+                  <span className="metric-value">{business.totalPromotions || 0}</span>
                 </td>
                 <td>
-                  <span className="metric-value">{business.totalEngagement.toLocaleString()}</span>
+                  <span className="metric-value">{business.totalEngagement?.toLocaleString() || 0}</span>
                 </td>
                 <td>
-                  <span className="metric-value revenue">${business.revenue.toLocaleString()}</span>
+                  <span className="metric-value revenue">${business.revenue?.toLocaleString() || 0}</span>
                 </td>
                 <td>
-                  <span className={`growth-badge ${business.growth >= 0 ? 'positive' : 'negative'}`}>
-                    {business.growth >= 0 ? '+' : ''}{business.growth}%
+                  <span className={`growth-badge ${(business.growth || 0) >= 0 ? 'positive' : 'negative'}`}>
+                    {(business.growth || 0) >= 0 ? '+' : ''}{business.growth || 0}%
                   </span>
                 </td>
                 <td>
@@ -1045,6 +965,7 @@ function AdminAnalyticsTab({ businessAnalytics }) {
     </div>
   );
 }
+
 // Category Management Tab Component
 function CategoryManagementTab({
   categories,
@@ -1112,7 +1033,6 @@ function CategoryManagementTab({
         <p>Manage categories and subcategories</p>
       </div>
 
-      {/* Add New Category Form */}
       <div className="category-form-section">
         <h3>Add New Category</h3>
         <form onSubmit={handleCreateCategory} className="category-form">
@@ -1130,7 +1050,6 @@ function CategoryManagementTab({
         </form>
       </div>
 
-      {/* Categories List */}
       <div className="categories-list">
         {categories.map(category => (
           <div key={category._id} className="category-card">
@@ -1147,7 +1066,6 @@ function CategoryManagementTab({
               </div>
             </div>
 
-            {/* Add Subcategory Form */}
             <div className="subcategory-form">
               <input
                 type="text"
@@ -1171,7 +1089,6 @@ function CategoryManagementTab({
               </button>
             </div>
 
-            {/* Subcategories List */}
             <div className="subcategories-list">
               {category.subcategories && category.subcategories.map(subcategory => (
                 <div key={subcategory._id} className="subcategory-item">
@@ -1195,6 +1112,609 @@ function CategoryManagementTab({
           <i className="fas fa-tags empty-icon"></i>
           <p className="empty-text">No categories found</p>
           <p className="empty-subtext">Create your first category to get started</p>
+        </div>
+      )}
+    </div>
+  );
+}
+function BusinessManagementTab({
+  businesses,
+  onDeleteBusiness,
+  onDeletePost,
+  onDeleteProduct,
+  onDeletePromotion,
+  onUpdateBusiness,
+  fetchBusinessPosts,
+  fetchBusinessProducts,
+  fetchBusinessPromotions
+}) {
+  const [selectedBusiness, setSelectedBusiness] = useState(null);
+  const [activeSection, setActiveSection] = useState('details');
+  const [editingBusiness, setEditingBusiness] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [businessData, setBusinessData] = useState({
+    posts: [],
+    products: [],
+    promotions: []
+  });
+  const [loadingData, setLoadingData] = useState(false);
+
+  // Load business-specific data when a business is selected or section changes
+  useEffect(() => {
+    if (selectedBusiness && activeSection !== 'details') {
+      loadBusinessData();
+    }
+  }, [selectedBusiness, activeSection]);
+
+  const loadBusinessData = async () => {
+    if (!selectedBusiness) return;
+    
+    setLoadingData(true);
+    try {
+      const [posts, products, promotions] = await Promise.all([
+        activeSection === 'posts' ? fetchBusinessPosts(selectedBusiness._id) : Promise.resolve([]),
+        activeSection === 'products' ? fetchBusinessProducts(selectedBusiness._id) : Promise.resolve([]),
+        activeSection === 'promotions' ? fetchBusinessPromotions(selectedBusiness._id) : Promise.resolve([])
+      ]);
+
+      setBusinessData({
+        posts: posts || [],
+        products: products || [],
+        promotions: promotions || []
+      });
+    } catch (error) {
+      console.error('Error loading business data:', error);
+      setBusinessData({ posts: [], products: [], promotions: [] });
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
+  const handleEditBusiness = (business) => {
+    setEditingBusiness(business._id);
+    setEditForm({
+      businessName: business.businessName,
+      businessCategory: business.businessCategory,
+      businessEmail: business.businessEmail,
+      businessPhone: business.businessPhone,
+      businessAddress: business.businessAddress,
+      businessDescription: business.businessDescription,
+      businessWebsite: business.businessWebsite || ''
+    });
+  };
+
+  const handleSaveBusiness = async (businessId) => {
+    await onUpdateBusiness(businessId, editForm);
+    setEditingBusiness(null);
+    setEditForm({});
+  };
+
+  const handleCancelEdit = () => {
+    setEditingBusiness(null);
+    setEditForm({});
+  };
+
+  const handleDeletePost = async (businessId, postId) => {
+    const result = await onDeletePost(businessId, postId);
+    if (result.success) {
+      // Reload posts after deletion
+      const posts = await fetchBusinessPosts(businessId);
+      setBusinessData(prev => ({ ...prev, posts }));
+    }
+  };
+
+  const handleDeleteProduct = async (businessId, productId) => {
+    const result = await onDeleteProduct(businessId, productId);
+    if (result.success) {
+      // Reload products after deletion
+      const products = await fetchBusinessProducts(businessId);
+      setBusinessData(prev => ({ ...prev, products }));
+    }
+  };
+
+  const handleDeletePromotion = async (businessId, promotionId) => {
+    const result = await onDeletePromotion(businessId, promotionId);
+    if (result.success) {
+      // Reload promotions after deletion
+      const promotions = await fetchBusinessPromotions(businessId);
+      setBusinessData(prev => ({ ...prev, promotions }));
+    }
+  };
+
+  if (selectedBusiness) {
+    return (
+      <div className="business-detail-view">
+        <div className="detail-header">
+          <button 
+            className="back-button"
+            onClick={() => {
+              setSelectedBusiness(null);
+              setBusinessData({ posts: [], products: [], promotions: [] });
+            }}
+          >
+            <i className="fas fa-arrow-left"></i> Back to Businesses
+          </button>
+          <h2>{selectedBusiness.businessName}</h2>
+          <span className={`status-badge ${selectedBusiness.status}`}>
+            {selectedBusiness.status}
+          </span>
+        </div>
+
+        <div className="business-tabs">
+          <button 
+            className={`tab-button ${activeSection === 'details' ? 'active' : ''}`}
+            onClick={() => setActiveSection('details')}
+          >
+            Business Details
+          </button>
+          <button 
+            className={`tab-button ${activeSection === 'posts' ? 'active' : ''}`}
+            onClick={() => setActiveSection('posts')}
+          >
+            Posts ({businessData.posts.length || 0})
+          </button>
+          <button 
+            className={`tab-button ${activeSection === 'products' ? 'active' : ''}`}
+            onClick={() => setActiveSection('products')}
+          >
+            Products ({businessData.products.length || 0})
+          </button>
+          <button 
+            className={`tab-button ${activeSection === 'promotions' ? 'active' : ''}`}
+            onClick={() => setActiveSection('promotions')}
+          >
+            Promotions ({businessData.promotions.length || 0})
+          </button>
+        </div>
+
+        <div className="tab-content">
+          {activeSection === 'details' && (
+            <BusinessDetailsSection 
+              business={selectedBusiness}
+              onEditBusiness={handleEditBusiness}
+              onSaveBusiness={handleSaveBusiness}
+              onCancelEdit={handleCancelEdit}
+              editingBusiness={editingBusiness}
+              editForm={editForm}
+              setEditForm={setEditForm}
+              onDeleteBusiness={onDeleteBusiness}
+            />
+          )}
+
+          {activeSection === 'posts' && (
+            <PostsSection 
+              business={selectedBusiness}
+              posts={businessData.posts}
+              loading={loadingData}
+              onDeletePost={handleDeletePost}
+            />
+          )}
+
+          {activeSection === 'products' && (
+            <ProductsSection 
+              business={selectedBusiness}
+              products={businessData.products}
+              loading={loadingData}
+              onDeleteProduct={handleDeleteProduct}
+            />
+          )}
+
+          {activeSection === 'promotions' && (
+            <PromotionsSection 
+              business={selectedBusiness}
+              promotions={businessData.promotions}
+              loading={loadingData}
+              onDeletePromotion={handleDeletePromotion}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="business-management">
+      <div className="admin-section-header">
+        <h2>All Businesses</h2>
+        <p>Manage and view all business accounts</p>
+      </div>
+
+      <div className="businesses-grid">
+        {businesses.map(business => (
+          <div key={business._id} className="business-card">
+            <div className="business-card-header">
+              <h3>{business.businessName}</h3>
+              <span className={`status-badge ${business.status}`}>
+                {business.status}
+              </span>
+            </div>
+            
+            <div className="business-card-info">
+              <p><i className="fas fa-tag"></i> {business.businessCategory}</p>
+              <p><i className="fas fa-envelope"></i> {business.businessEmail}</p>
+              <p><i className="fas fa-phone"></i> {business.businessPhone}</p>
+            </div>
+
+            <div className="business-stats">
+              <div className="stat">
+                <span className="stat-number">{business.totalPosts || 0}</span>
+                <span className="stat-label">Posts</span>
+              </div>
+              <div className="stat">
+                <span className="stat-number">{business.totalProducts || 0}</span>
+                <span className="stat-label">Products</span>
+              </div>
+              <div className="stat">
+                <span className="stat-number">{/* Promotions count not available in main business data */}0</span>
+                <span className="stat-label">Promotions</span>
+              </div>
+            </div>
+
+            <div className="business-card-actions">
+              <button 
+                className="button primary"
+                onClick={() => setSelectedBusiness(business)}
+              >
+                <i className="fas fa-eye"></i> View Details
+              </button>
+              <button 
+                className="button danger"
+                onClick={() => {
+                  if (window.confirm(`Are you sure you want to delete ${business.businessName}? This will also delete all posts, products, and promotions.`)) {
+                    onDeleteBusiness(business._id);
+                  }
+                }}
+              >
+                <i className="fas fa-trash"></i> Delete
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {businesses.length === 0 && (
+        <div className="empty-state">
+          <i className="fas fa-store empty-icon"></i>
+          <p className="empty-text">No businesses found</p>
+          <p className="empty-subtext">Businesses will appear here once they register</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Updated Business Details Section Component
+function BusinessDetailsSection({ 
+  business, 
+  onEditBusiness, 
+  onSaveBusiness, 
+  onCancelEdit, 
+  editingBusiness, 
+  editForm, 
+  setEditForm,
+  onDeleteBusiness 
+}) {
+  return (
+    <div className="business-details-section">
+      <div className="section-header">
+        <h3>Business Information</h3>
+        {editingBusiness !== business._id ? (
+          <button 
+            className="button secondary"
+            onClick={() => onEditBusiness(business)}
+          >
+            <i className="fas fa-edit"></i> Edit Business
+          </button>
+        ) : (
+          <div className="edit-actions">
+            <button 
+              className="button success"
+              onClick={() => onSaveBusiness(business._id)}
+            >
+              <i className="fas fa-save"></i> Save
+            </button>
+            <button 
+              className="button secondary"
+              onClick={onCancelEdit}
+            >
+              <i className="fas fa-times"></i> Cancel
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="details-grid">
+        <div className="detail-field">
+          <label>Business Name</label>
+          {editingBusiness === business._id ? (
+            <input
+              type="text"
+              value={editForm.businessName}
+              onChange={(e) => setEditForm({...editForm, businessName: e.target.value})}
+              className="edit-input"
+            />
+          ) : (
+            <p>{business.businessName}</p>
+          )}
+        </div>
+
+        <div className="detail-field">
+          <label>Category</label>
+          {editingBusiness === business._id ? (
+            <input
+              type="text"
+              value={editForm.businessCategory}
+              onChange={(e) => setEditForm({...editForm, businessCategory: e.target.value})}
+              className="edit-input"
+            />
+          ) : (
+            <p>{business.businessCategory}</p>
+          )}
+        </div>
+
+        <div className="detail-field">
+          <label>Email</label>
+          {editingBusiness === business._id ? (
+            <input
+              type="email"
+              value={editForm.businessEmail}
+              onChange={(e) => setEditForm({...editForm, businessEmail: e.target.value})}
+              className="edit-input"
+            />
+          ) : (
+            <p>{business.businessEmail}</p>
+          )}
+        </div>
+
+        <div className="detail-field">
+          <label>Phone</label>
+          {editingBusiness === business._id ? (
+            <input
+              type="text"
+              value={editForm.businessPhone}
+              onChange={(e) => setEditForm({...editForm, businessPhone: e.target.value})}
+              className="edit-input"
+            />
+          ) : (
+            <p>{business.businessPhone}</p>
+          )}
+        </div>
+
+        <div className="detail-field">
+          <label>Website</label>
+          {editingBusiness === business._id ? (
+            <input
+              type="url"
+              value={editForm.businessWebsite}
+              onChange={(e) => setEditForm({...editForm, businessWebsite: e.target.value})}
+              className="edit-input"
+              placeholder="https://example.com"
+            />
+          ) : (
+            <p>{business.businessWebsite || 'Not provided'}</p>
+          )}
+        </div>
+
+        <div className="detail-field full-width">
+          <label>Address</label>
+          {editingBusiness === business._id ? (
+            <textarea
+              value={editForm.businessAddress}
+              onChange={(e) => setEditForm({...editForm, businessAddress: e.target.value})}
+              className="edit-textarea"
+              rows="3"
+            />
+          ) : (
+            <p>{business.businessAddress}</p>
+          )}
+        </div>
+
+        <div className="detail-field full-width">
+          <label>Description</label>
+          {editingBusiness === business._id ? (
+            <textarea
+              value={editForm.businessDescription}
+              onChange={(e) => setEditForm({...editForm, businessDescription: e.target.value})}
+              className="edit-textarea"
+              rows="4"
+            />
+          ) : (
+            <p>{business.businessDescription}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="danger-zone">
+        <h4>Danger Zone</h4>
+        <p>Permanently delete this business and all its data</p>
+        <button 
+          className="button danger"
+          onClick={() => {
+            if (window.confirm(`Are you sure you want to delete ${business.businessName}? This action cannot be undone and will delete all posts, products, and promotions.`)) {
+              onDeleteBusiness(business._id);
+            }
+          }}
+        >
+          <i className="fas fa-trash"></i> Delete Business
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Updated Posts Section Component
+function PostsSection({ business, posts, loading, onDeletePost }) {
+  if (loading) {
+    return (
+      <div className="posts-section">
+        <h3>Business Posts</h3>
+        <div className="loading-state">
+          <div className="loading-spinner"></div>
+          <p>Loading posts...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="posts-section">
+      <h3>Business Posts</h3>
+      {posts && posts.length > 0 ? (
+        <div className="posts-list">
+          {posts.map(post => (
+            <div key={post._id} className="post-card">
+              <div className="post-header">
+                <h4>{post.title || 'Untitled Post'}</h4>
+                <span className="post-date">
+                  {new Date(post.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+              <p className="post-content">{post.content}</p>
+              <div className="post-stats">
+                <span><i className="fas fa-heart"></i> {post.likesCount || 0} likes</span>
+                <span><i className="fas fa-comment"></i> {post.commentsCount || 0} comments</span>
+                <span className={`status-badge ${post.status}`}>{post.status}</span>
+              </div>
+              <div className="post-actions">
+                <button 
+                  className="button danger small"
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to delete this post?')) {
+                      onDeletePost(business._id, post._id);
+                    }
+                  }}
+                >
+                  <i className="fas fa-trash"></i> Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-state">
+          <i className="fas fa-newspaper empty-icon"></i>
+          <p className="empty-text">No posts found</p>
+          <p className="empty-subtext">This business hasn't created any posts yet</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Updated Products Section Component
+function ProductsSection({ business, products, loading, onDeleteProduct }) {
+  if (loading) {
+    return (
+      <div className="products-section">
+        <h3>Business Products</h3>
+        <div className="loading-state">
+          <div className="loading-spinner"></div>
+          <p>Loading products...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="products-section">
+      <h3>Business Products</h3>
+      {products && products.length > 0 ? (
+        <div className="products-grid">
+          {products.map(product => (
+            <div key={product._id} className="product-card">
+              <div className="product-header">
+                <h4>{product.name}</h4>
+                <span className="product-price">${product.price}</span>
+              </div>
+              <p className="product-description">{product.description}</p>
+              <div className="product-meta">
+                <span>SKU: {product.sku}</span>
+                <span className={`status-badge ${product.isActive ? 'active' : 'inactive'}`}>
+                  {product.isActive ? 'active' : 'inactive'}
+                </span>
+              </div>
+              <div className="product-actions">
+                <button 
+                  className="button danger small"
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to delete this product?')) {
+                      onDeleteProduct(business._id, product._id);
+                    }
+                  }}
+                >
+                  <i className="fas fa-trash"></i> Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-state">
+          <i className="fas fa-shopping-bag empty-icon"></i>
+          <p className="empty-text">No products found</p>
+          <p className="empty-subtext">This business hasn't added any products yet</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Updated Promotions Section Component
+function PromotionsSection({ business, promotions, loading, onDeletePromotion }) {
+  if (loading) {
+    return (
+      <div className="promotions-section">
+        <h3>Business Promotions</h3>
+        <div className="loading-state">
+          <div className="loading-spinner"></div>
+          <p>Loading promotions...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="promotions-section">
+      <h3>Business Promotions</h3>
+      {promotions && promotions.length > 0 ? (
+        <div className="promotions-list">
+          {promotions.map(promotion => (
+            <div key={promotion._id} className="promotion-card">
+              <div className="promotion-header">
+                <h4>{promotion.name}</h4>
+                <span className="promotion-discount">
+                  {promotion.discountValue > 0 ? `${promotion.discountValue}% OFF` : 'Promotion'}
+                </span>
+              </div>
+              <p className="promotion-description">{promotion.description}</p>
+              <div className="promotion-dates">
+                <span>Start: {new Date(promotion.startDate).toLocaleDateString()}</span>
+                <span>End: {promotion.endDate ? new Date(promotion.endDate).toLocaleDateString() : 'No end date'}</span>
+              </div>
+              <div className="promotion-meta">
+                <span>Type: {promotion.type}</span>
+                <span className={`status-badge ${promotion.status}`}>{promotion.status}</span>
+              </div>
+              <div className="promotion-actions">
+                <button 
+                  className="button danger small"
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to delete this promotion?')) {
+                      onDeletePromotion(business._id, promotion._id);
+                    }
+                  }}
+                >
+                  <i className="fas fa-trash"></i> Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-state">
+          <i className="fas fa-tag empty-icon"></i>
+          <p className="empty-text">No promotions found</p>
+          <p className="empty-subtext">This business hasn't created any promotions yet</p>
         </div>
       )}
     </div>
