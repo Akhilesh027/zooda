@@ -140,11 +140,11 @@ interface Promotion {
   updatedAt?: string;
 }
 
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "https://api.zooda.in";
 
 const getActivePromotions = async (): Promise<Promotion[]> => {
   try {
-    const response = await axios.get(`http://localhost:5000/api/promotion`);
+    const response = await axios.get(`https://api.zooda.in/api/promotion`);
 
     // Handle both response structures
     if (response.data.success && Array.isArray(response.data.data)) {
@@ -1738,8 +1738,8 @@ const CompanyListItem = ({
   onLoginClick,
 }: CompanyListItemProps) => {
   const [isFollowing, setIsFollowing] = useState(false);
-  const [followers, setFollowers] = useState<number>(
-    Number(company.followers) || 0
+  const [followers, setFollowers] = useState(
+    (company.followers) || 1
   );
 
   useEffect(() => {
@@ -1781,7 +1781,7 @@ const CompanyListItem = ({
       );
       if (response.data.success) {
         setIsFollowing(response.data.isFollowing);
-        setFollowers(Number(response.data.followers) || 0);
+        setFollowers((response.data.followers) || 1);
       }
     } catch (err: any) {
       console.error("Follow error:", err);
@@ -1812,8 +1812,8 @@ const CompanyListItem = ({
 
           <div className="company-stats">
             {/* ✅ Always show correct follower count */}
-            <span>{followers} Followers</span>
-       
+           <span>{Number(company.followers) && Number(company.followers) > 0 ? Number(company.followers) : 0} Followers</span>
+
 {company.engagementRate > 0 ? (
   <div className="stat-item">
     <span className="stat-number">{company.engagementRate}%</span>
@@ -2677,8 +2677,8 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
 
       const endpoint =
         activeTab === "Following"
-          ? `http://localhost:5000/api/posts/following/${user._id}`
-          : `http://localhost:5000/api/posts/unfollowed/${user._id}`;
+          ? `https://api.zooda.in/api/posts/following/${user._id}`
+          : `https://api.zooda.in/api/posts/unfollowed/${user._id}`;
 
       const response = await axios.get(endpoint);
       const data = response.data;
@@ -2693,7 +2693,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
               `https://picsum.photos/600/400?random=${i}`;
 
             if (!imageUrl.startsWith("http")) {
-              imageUrl = `http://localhost:5000${
+              imageUrl = `https://api.zooda.in${
                 imageUrl.startsWith("/") ? "" : "/"
               }${imageUrl}`;
             }
@@ -2705,7 +2705,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
             if (companyId) {
               try {
                 const companyResponse = await axios.get(
-                  `http://localhost:5000/api/companies/${companyId}`
+                  `https://api.zooda.in/api/companies/${companyId}`
                 );
                 if (companyResponse.data.success) {
                   company = companyResponse.data.company;
@@ -2714,7 +2714,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
                   if (company.logoUrl) {
                     let logoUrl = company.logoUrl;
                     if (!logoUrl.startsWith("http")) {
-                      logoUrl = `http://localhost:5000${
+                      logoUrl = `https://api.zooda.in${
                         logoUrl.startsWith("/") ? "" : "/"
                       }${logoUrl}`;
                     }
@@ -2744,7 +2744,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
             if (user?._id && post._id) {
               try {
                 const likeResponse = await axios.get(
-                  `http://localhost:5000/api/post/${post._id}/like-status/${user._id}`
+                  `https://api.zooda.in/api/post/${post._id}/like-status/${user._id}`
                 );
                 isLiked = likeResponse.data.isLiked;
               } catch (err) {
@@ -2814,7 +2814,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
       };
       setPosts(updatedPosts);
 
-      await axios.post(`http://localhost:5000/api/post/${postId}/like`, {
+      await axios.post(`https://api.zooda.in/api/post/${postId}/like`, {
         userId: user._id,
       });
 
@@ -2842,7 +2842,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
 
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/post/${postId}/comment`,
+        `https://api.zooda.in/api/post/${postId}/comment`,
         {
           text: commentText,
           userId: user._id,
@@ -3054,7 +3054,7 @@ const PostGridItem = ({
     if (!showComments && post._id) {
       try {
         const response = await axios.get(
-          `http://localhost:5000/api/post/${post._id}/comments`
+          `https://api.zooda.in/api/post/${post._id}/comments`
         );
         setPostComments(response.data.comments || []);
       } catch (err) {
@@ -3086,7 +3086,7 @@ const PostGridItem = ({
         setCommentText("");
         // Refresh comments
         const response = await axios.get(
-          `http://localhost:5000/api/post/${post._id}/comments`
+          `https://api.zooda.in/api/post/${post._id}/comments`
         );
         setPostComments(response.data.comments || []);
       } else if (result.error) {
@@ -3958,7 +3958,7 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
       };
       setPosts(updatedPosts);
 
-      await axios.post(`http://localhost:5000/api/post/${postId}/like`, {
+      await axios.post(`https://api.zooda.in/api/post/${postId}/like`, {
         userId: user._id,
       });
 
@@ -3986,7 +3986,7 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
 
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/post/${postId}/comment`,
+        `https://api.zooda.in/api/post/${postId}/comment`,
         {
           text: commentText,
           userId: user._id,
