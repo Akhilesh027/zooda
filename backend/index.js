@@ -37,12 +37,17 @@ const storage = new CloudinaryStorage({
 //'mongodb+srv://akhileshreddy811_db_user:6MQywIJtJR8oLeCo@cluster0.t0i7d7t.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
 const upload = multer({ storage });
 
-
-mongoose.connect(process.env.MONGODB_URI , {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
-
+mongoose
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => {
+    console.log("MongoDB Connected Successfully");
+  })
+  .catch((err) => {
+    console.error("MongoDB Connection Error:", err);
+  });
 const UserSchema = new mongoose.Schema({
   firstName: { type: String, required: true, trim: true },
   lastName: { type: String, required: true, trim: true },
@@ -241,9 +246,6 @@ const PostSchema = new mongoose.Schema({
 }, { 
   timestamps: true
 });
-
-
-// Indexes for faster queries
 PostSchema.index({ user: 1, createdAt: -1 });
 PostSchema.index({ business: 1, status: 1 });
 PostSchema.index({ scheduledFor: 1 });
@@ -428,6 +430,76 @@ const AnalyticsSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 const Analytics = mongoose.model('Analytics', AnalyticsSchema);
+async function updateBusinessEngagementRate(businessId) {
+    const businessObjectId = new mongoose.Types.ObjectId(businessId);
+
+    // 1. Run aggregation to collect post engagement
+    const result = await Post.aggregate([
+        { $match: { business: businessObjectId } },
+        {
+            $group: {
+                _id: null,
+                totalPosts: { $sum: 1 },
+                totalLikes: { $sum: { $size: { $ifNull: ["$likesList", []] } } },
+                totalComments: { $sum: { $size: { $ifNull: ["$commentsList", []] } } },
+                totalShares: { $sum: { $ifNull: ["$shares", 0] } },
+                totalReviews: { $sum: { $size: { $ifNull: ["$commentsList", []] } } }
+            }
+        }
+    ]);
+
+    const metrics = result[0] || {
+        totalPosts: 0,
+        totalLikes: 0,
+        totalComments: 0,
+        totalShares: 0,
+        totalReviews: 0
+    };
+
+    // 2. Fetch product count from business
+    const business = await Business.findById(businessId).select("totalProducts");
+    const productCount = business?.totalProducts || 0;
+
+    // 3. Weighted Score
+    const weightedScore =
+        (metrics.totalLikes * 0.1) +
+        (metrics.totalComments * 0.1) +
+        (metrics.totalShares * 0.2) +
+        (metrics.totalReviews * 0.2) +
+        (productCount * 0.4);
+
+    // 4. Avoid division error. Denominator = max(1, totalPosts)
+    const denominator = Math.max(metrics.totalPosts, 1);
+
+    const engagementRate = parseFloat(((weightedScore / denominator) * 100).toFixed(2));
+
+    // 5. Save results
+    await Business.findByIdAndUpdate(businessId, {
+        engagementRate,
+        totalPosts: metrics.totalPosts,
+    });
+}
+const subcategorySchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  }
+});
+
+const categorySchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true
+  },
+  subcategories: [subcategorySchema]
+}, {
+  timestamps: true
+});
+const Category = mongoose.model('Category', categorySchema);
+
 const authMiddleware = (req, res, next) => {
     // 1. Get token from header (Authorization: Bearer <token>)
     const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -1896,90 +1968,116 @@ app.get('/api/dashboard/:businessId', async (req, res) => {
     }
 });
 app.post("/api/post/:postId/like", async (req, res) => {
-  try {
-    const { userId } = req.body; // Extract userId from request body
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
-    }
+  try {
+    const { userId } = req.body;
 
-    const post = await Post.findById(req.params.postId);
-    if (!post) return res.status(404).json({ message: "Post not found" });
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
 
-    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const post = await Post.findById(req.params.postId);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
 
-    if (!post.likesList) post.likesList = [];
+    const userObjectId = new mongoose.Types.ObjectId(userId);
 
-    const alreadyLiked = post.likesList.some(likeId => likeId.equals(userObjectId));
+    // Ensure likesList exists
+    if (!Array.isArray(post.likesList)) {
+      post.likesList = [];
+    }
 
-    if (alreadyLiked) {
-      post.likesList = post.likesList.filter(likeId => !likeId.equals(userObjectId));
-    } else {
-      post.likesList.push(userObjectId);
-    }
+    // Check if user already liked
+    const alreadyLiked = post.likesList.some(
+      (like) => like.userId.toString() === userObjectId.toString()
+    );
 
-    post.likesCount = post.likesList.length;
-    await post.save();
+    if (alreadyLiked) {
+      // REMOVE LIKE
+      post.likesList = post.likesList.filter(
+        (like) => like.userId.toString() !== userObjectId.toString()
+      );
+    } else {
+      // ADD LIKE
+      post.likesList.push({ userId: userObjectId });
+    }
 
-    // Optional: get the user data if you want to return it
-    // const user = await User.findById(userObjectId).select("name avatarUrl");
+    // Update like count
+    post.likesCount = post.likesList.length;
 
-    // Update engagement rate
-    await updateBusinessEngagementRate(post.business);
+    await post.save();
 
-    res.json({
-      success: true,
-      likesCount: post.likesCount,
-      isLiked: !alreadyLiked,
-      // user // optionally return user info
-    });
-  } catch (err) {
-    console.error("Like error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
+    // 🔥 Update Engagement Rate Instantly
+    await updateBusinessEngagementRate(post.business);
+
+    return res.json({
+      success: true,
+      message: alreadyLiked ? "Post unliked" : "Post liked",
+      likesCount: post.likesCount,
+      isLiked: !alreadyLiked
+    });
+
+  } catch (error) {
+    console.error("Like error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
 });
 
-app.post("/api/post/:postId/comment", async (req, res) => {
-  try {
-    const { text, userId } = req.body;
-    
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required to comment" });
-    }
+app.post("/api/post/:postId/like", async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
 
-    if (!text?.trim()) return res.status(400).json({ message: "Comment cannot be empty" });
+    const post = await Post.findById(req.params.postId);
+    if (!post) return res.status(404).json({ message: "Post not found" });
 
-    const post = await Post.findById(req.params.postId);
-    if (!post) return res.status(404).json({ message: "Post not found" });
+    const userObjectId = new mongoose.Types.ObjectId(userId);
 
-    const newComment = {
-      userId: new mongoose.Types.ObjectId(userId),
-      text: text.trim(),
-      date: new Date()
-    };
+    // Ensure likesList exists
+    if (!Array.isArray(post.likesList)) post.likesList = [];
 
-    if (!post.commentsList) post.commentsList = [];
-    post.commentsList.push(newComment);
-    post.commentsCount = post.commentsList.length;
-    await post.save();
+    // ---- NORMALIZE likesList ----
+    post.likesList = post.likesList.map((like) => {
+      if (like?.userId) return like;  // already in correct format
+      return { userId: like };        // convert old format
+    });
 
-    // Optional: populate user details for the newly added comment
-    // const user = await User.findById(userId).select("name avatarUrl");
-    // const commentWithUser = { ...newComment, user };
+    // Check if user already liked
+    const alreadyLiked = post.likesList.some(
+      (like) => like.userId.toString() === userObjectId.toString()
+    );
 
-    // Update engagement rate
-    await updateBusinessEngagementRate(post.business);
+    if (alreadyLiked) {
+      // REMOVE LIKE
+      post.likesList = post.likesList.filter(
+        (like) => like.userId.toString() !== userObjectId.toString()
+      );
+    } else {
+      // ADD LIKE
+      post.likesList.push({ userId: userObjectId });
+    }
 
-    res.json({
-      success: true,
-      commentsCount: post.commentsCount,
-      comment: newComment,
-      // commentUser: user // optionally return user info with the comment
-    });
-  } catch (err) {
-    console.error("Comment error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
+    // Update like count
+    post.likesCount = post.likesList.length;
+    await post.save();
+
+    // Update Engagement Rate
+    await updateBusinessEngagementRate(post.business);
+
+    return res.json({
+      success: true,
+      isLiked: !alreadyLiked,
+      likesCount: post.likesCount,
+    });
+
+  } catch (error) {
+    console.error("Like error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
 });
+
 
 app.post("/api/follow/:businessId", async (req, res) => {
   const { businessId } = req.params;
@@ -2158,7 +2256,7 @@ app.get("/api/user/:userId/following", async (req, res) => {
       
       // Ensure logo URL is properly formatted
       if (businessObj.logoUrl && !businessObj.logoUrl.startsWith("http")) {
-        businessObj.logoUrl = `${process.env.API_BASE_URL || 'https://api.zooda.in'}${businessObj.logoUrl.startsWith("/") ? "" : "/"}${businessObj.logoUrl}`;
+        businessObj.logoUrl = `${process.env.API_BASE_URL || 'http://localhost:5000'}${businessObj.logoUrl.startsWith("/") ? "" : "/"}${businessObj.logoUrl}`;
       }
 
       // Generate username from businessName
@@ -2372,7 +2470,7 @@ app.get("/api/posts/following/:userId", async (req, res) => {
       if (postObj.business && postObj.business.logoUrl) {
         let logoUrl = postObj.business.logoUrl;
         if (!logoUrl.startsWith("http")) {
-          logoUrl = `${process.env.API_BASE_URL || 'https://api.zooda.in'}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
+          logoUrl = `${process.env.API_BASE_URL || 'http://localhost:5000'}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
         }
         postObj.business.logoUrl = logoUrl;
       }
@@ -2451,7 +2549,7 @@ app.get("/api/posts/unfollowed/:userId", async (req, res) => {
       if (postObj.business && postObj.business.logoUrl) {
         let logoUrl = postObj.business.logoUrl;
         if (!logoUrl.startsWith("http")) {
-          logoUrl = `${process.env.API_BASE_URL || 'https://api.zooda.in'}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
+          logoUrl = `${process.env.API_BASE_URL || 'http://localhost:5000'}${logoUrl.startsWith("/") ? "" : "/"}${logoUrl}`;
         }
         postObj.business.logoUrl = logoUrl;
       }
@@ -2882,104 +2980,6 @@ app.get("/api/client", authMiddleware, async (req, res) => {
   }
 });
 
-async function updateBusinessEngagementRate(businessId) {
-    const businessObjectId = new mongoose.Types.ObjectId(businessId);
-    
-    // --- 8. Define 15-day time constraint ---
-    const lookbackDays = 15;
-    const fifteenDaysAgo = new Date();
-    fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - lookbackDays);
-    
-    // 1. Fetch current business data (needed for registration date and followers)
-    // Select relevant fields only for performance
-    const business = await Business.findById(businessId).select('createdAt followers totalPosts');
-    if (!business) return;
-
-    // --- 9. Handle newly registered websites (less than 15 days old) ---
-    if (business.createdAt > fifteenDaysAgo) {
-        // Newly registered, skip calculation and set ER to 0.00%
-        await Business.findByIdAndUpdate(businessId, { engagementRate: 0.00, totalPosts: 0 });
-        return;
-    }
-
-    // --- Aggregation: Match by Business ID AND Time Constraint ---
-    const pipeline = [
-        { 
-            $match: { 
-                business: businessObjectId,
-                createdAt: { $gte: fifteenDaysAgo } // Filter by the last 15 days
-            } 
-        },
-        {
-            $group: {
-                _id: null,
-                totalPosts: { $sum: 1 }, // Count posts in the 15-day period
-                totalLikes: { $sum: { $size: { $ifNull: ['$likesList', []] } } },
-                totalComments: { $sum: { $size: { $ifNull: ['$commentsList', []] } } },
-                totalShares: { $sum: { $ifNull: ['$shares', 0] } },
-                // Assuming "Reviews" and "Visit site" metrics are handled/tracked elsewhere
-                // Since 'Reviews' maps to Comments in previous logic, we use Comments count again here.
-                totalReviews: { $sum: { $size: { $ifNull: ['$commentsList', []] } } }, 
-            }
-        }
-    ];
-
-    const result = await Post.aggregate(pipeline);
-    const metrics = result[0] || { totalPosts: 0, totalLikes: 0, totalComments: 0, totalShares: 0, totalReviews: 0 };
-    
-    
-    // --- Define Static Inputs (Replace with actual data if available) ---
-    // NOTE: 'Visit Site' visits/clicks are assumed to be tracked outside of the Posts schema.
-    const TOTAL_VISITS_LAST_15_DAYS = 1000; // <<< Placeholder: Use a real metric if implemented
-    const totalDenominator = TOTAL_VISITS_LAST_15_DAYS;
-    
-    const followerCount = business.followers || 1; // Used only if you change the formula back to standard ER
-    
-    // --- 7. Calculate Weighted Engagement Score (WES) ---
-    // WES = (0.1*Likes) + (0.1*Comments) + (0.2*Shares) + (0.2*Reviews) + (0.4*Visits Site)
-    const weightedScore = (
-        (metrics.totalLikes * 0.1) +
-        (metrics.totalComments * 0.1) + 
-        (metrics.totalShares * 0.2) +
-        (metrics.totalReviews * 0.2) +
-        (TOTAL_VISITS_LAST_15_DAYS * 0.4) // Apply 0.4 weight to the total visit count
-    );
-    
-    // --- Final ER Calculation ---
-    // ER = (WES / Total Visits) * 100 
-    let engagementRate = 0;
-
-    if (totalDenominator > 0) {
-        engagementRate = (weightedScore / totalDenominator) * 100;
-    }
-    
-    // --- Save Results ---
-    await Business.findByIdAndUpdate(businessId, {
-        engagementRate: parseFloat(engagementRate.toFixed(2)),
-        // Update total posts count for the business model for consistency (using the 15-day post count here)
-        totalPosts: metrics.totalPosts 
-    });
-}
-const subcategorySchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  }
-});
-
-const categorySchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true
-  },
-  subcategories: [subcategorySchema]
-}, {
-  timestamps: true
-});
-const Category = mongoose.model('Category', categorySchema);
 app.get('/api/admin/categories', async (req, res) => {
   try {
     const categories = await Category.find().sort({ name: 1 });

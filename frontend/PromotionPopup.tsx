@@ -11,7 +11,7 @@ const PromotionPopup: React.FC<PromotionPopupProps> = ({ promotion, onClaimOffer
   const getImageUrl = () => {
     if (!promotion.imageUrl && !promotion.image) return "";
     const url = promotion.imageUrl || promotion.image || "";
-    return url.startsWith("http") ? url : `https://api.zooda.in${url}`;
+    return url.startsWith("http") ? url : `http://localhost:5000${url}`;
   };
 
   const getDiscountDisplay = () => {

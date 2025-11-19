@@ -9,7 +9,7 @@ import {
 import { Trash2 } from "lucide-react";
 
 // --- CONFIGURATION ---
-const API_BASE_URL = 'https://api.zooda.in/api';
+const API_BASE_URL = 'http://localhost:5000/api';
 axios.defaults.baseURL = API_BASE_URL;
 axios.defaults.headers.common['Accept'] = 'application/json';
 
@@ -616,27 +616,44 @@ const DashboardScreen = ({ existingBusiness, user, notify }) => {
     </div>
   );
 };
-
-// UPDATED: PostCreateForm with editing functionality
 const PostCreateForm = ({ businessId, onClose, onSuccess, notify, existingPost }) => {
   const [formData, setFormData] = useState({
-    content: existingPost?.content || '',
-    scheduledFor: existingPost?.scheduledFor ? new Date(existingPost.scheduledFor).toISOString().slice(0, 16) : '',
-    category: existingPost?.category || '',
+    content: existingPost?.content || "",
+    scheduledFor: existingPost?.scheduledFor
+      ? new Date(existingPost.scheduledFor).toISOString().slice(0, 16)
+      : "",
+    category: existingPost?.category || "",
   });
+
   const [mediaFile, setMediaFile] = useState(null);
   const [postLoading, setPostLoading] = useState(false);
 
-  const categories = [
-    { label: 'Marketing', value: 'marketing' },
-    { label: 'News', value: 'news' },
-    { label: 'Promotions', value: 'promotions' },
-    { label: 'Updates', value: 'updates' },
-    { label: 'Events', value: 'events' },
-  ];
+  // NEW: multiple custom categories
+  const [categories, setCategories] = useState(
+    existingPost?.category ? [existingPost.category] : []
+  );
+  const [newCategory, setNewCategory] = useState("");
 
-  const handleCategorySelect = (value) => {
-    setFormData((prev) => ({ ...prev, category: value }));
+  const handleAddCategory = () => {
+    if (!newCategory.trim()) return;
+
+    const formatted = newCategory.trim();
+
+    if (!categories.includes(formatted)) {
+      setCategories([...categories, formatted]);
+    }
+
+    setFormData((prev) => ({ ...prev, category: formatted }));
+    setNewCategory("");
+  };
+
+  const handleRemoveCategory = (cat) => {
+    const updated = categories.filter((c) => c !== cat);
+    setCategories(updated);
+
+    if (formData.category === cat) {
+      setFormData((prev) => ({ ...prev, category: "" }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -644,33 +661,29 @@ const PostCreateForm = ({ businessId, onClose, onSuccess, notify, existingPost }
     setPostLoading(true);
 
     const data = new FormData();
-    data.append('businessId', businessId);
-    data.append('content', formData.content);
-    data.append('scheduledFor', formData.scheduledFor);
-    data.append('category', formData.category);
-    if (mediaFile) {
-      data.append('media', mediaFile);
-    }
+    data.append("businessId", businessId);
+    data.append("content", formData.content);
+    data.append("scheduledFor", formData.scheduledFor);
+    data.append("category", formData.category);
+
+    if (mediaFile) data.append("media", mediaFile);
 
     try {
       if (existingPost) {
-        // Update existing post
         await axios.put(`/posts/${existingPost._id}`, data, {
-          headers: { 'Content-Type': 'multipart/form-data' },
+          headers: { "Content-Type": "multipart/form-data" },
         });
-        notify('success', 'Post updated successfully.');
+        notify("success", "Post updated successfully.");
       } else {
-        // Create new post
-        await axios.post('/posts', data, {
-          headers: { 'Content-Type': 'multipart/form-data' },
+        await axios.post("/posts", data, {
+          headers: { "Content-Type": "multipart/form-data" },
         });
-        notify('success', 'Post created successfully.');
+        notify("success", "Post created successfully.");
       }
-      
       onSuccess();
     } catch (err) {
-      console.error('[ERROR] Post operation error:', err.response?.data || err.message);
-      notify('error', err.response?.data?.message || `Failed to ${existingPost ? 'update' : 'create'} post.`);
+      console.error("Post Error:", err.response?.data || err.message);
+      notify("error", err.response?.data?.message || "Post failed!");
     } finally {
       setPostLoading(false);
     }
@@ -681,7 +694,7 @@ const PostCreateForm = ({ businessId, onClose, onSuccess, notify, existingPost }
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-6">
         <div className="flex justify-between items-center border-b pb-3 mb-4">
           <h3 className="text-xl font-semibold">
-            {existingPost ? 'Edit Post' : 'Schedule New Post'}
+            {existingPost ? "Edit Post" : "Schedule New Post"}
           </h3>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-800">
             <X size={24} />
@@ -689,86 +702,108 @@ const PostCreateForm = ({ businessId, onClose, onSuccess, notify, existingPost }
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* CONTENT */}
           <textarea
             placeholder="Post content..."
             value={formData.content}
             required
             onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-            className="w-full p-3 border rounded-lg h-32 resize-none focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full p-3 border rounded-lg h-32 resize-none"
           />
 
+          {/* CATEGORY MANAGEMENT */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Category
+              Add Custom Categories
             </label>
+
+            <div className="flex gap-2 mb-3">
+              <input
+                type="text"
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                placeholder="Enter category name..."
+                className="flex-1 p-2 border rounded-lg"
+              />
+              <button
+                type="button"
+                onClick={handleAddCategory}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              >
+                Add
+              </button>
+            </div>
+
+            {/* SHOW ADDED CATEGORIES */}
             <div className="flex flex-wrap gap-2">
               {categories.map((cat) => (
-                <button
-                  type="button"
-                  key={cat.value}
-                  onClick={() => handleCategorySelect(cat.value)}
-                  className={`px-4 py-2 rounded-full border text-sm font-medium transition ${
-                    formData.category === cat.value
-                      ? 'bg-indigo-600 text-white border-indigo-600'
-                      : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                <div
+                  key={cat}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full border cursor-pointer ${
+                    formData.category === cat
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "bg-gray-100 text-gray-700 border-gray-300"
                   }`}
+                  onClick={() =>
+                    setFormData((prev) => ({ ...prev, category: cat }))
+                  }
                 >
-                  {cat.label}
-                </button>
+                  <span>{cat}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveCategory(cat);
+                    }}
+                    className="text-xs text-red-600 hover:text-red-800"
+                  >
+                    ✕
+                  </button>
+                </div>
               ))}
             </div>
           </div>
 
-          <div className="flex space-x-4 items-center">
-            <label className="text-gray-700">Schedule Date (Optional):</label>
-            <input
-              type="datetime-local"
-              value={formData.scheduledFor}
-              onChange={(e) => setFormData({ ...formData, scheduledFor: e.target.value })}
-              className="p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
-
+          {/* MEDIA */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Media 
+              Media
             </label>
-            <p className="text-xs text-gray-500 mt-1">
-              Recommended size: <strong>500px × 300px</strong>
-            </p>
             <input
               type="file"
               accept="image/*,video/*"
               onChange={(e) => setMediaFile(e.target.files[0])}
-              className="w-full text-sm text-gray-500 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+              className="w-full text-sm text-gray-500 file:py-2 file:px-4 file:bg-indigo-50 file:text-indigo-700"
             />
+
             {existingPost?.mediaUrl && !mediaFile && (
-              <div className="mt-2">
-                <p className="text-sm text-gray-600">Current Media:</p>
-                <img 
-                  src={existingPost.mediaUrl} 
-                  alt="Current post media" 
-                  className="w-32 h-32 object-cover rounded-lg mt-1"
-                />
-              </div>
+              <img
+                src={existingPost.mediaUrl}
+                className="w-32 h-32 object-cover rounded-lg mt-2"
+                alt="current media"
+              />
             )}
           </div>
 
+          {/* SUBMIT */}
           <button
             type="submit"
             disabled={postLoading || !formData.category}
-            className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
+            className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg disabled:opacity-50"
           >
-            {postLoading 
-              ? (existingPost ? 'Updating...' : 'Creating...') 
-              : (existingPost ? 'Update Post' : 'Create Post')}
+            {postLoading
+              ? existingPost
+                ? "Updating..."
+                : "Creating..."
+              : existingPost
+              ? "Update Post"
+              : "Create Post"}
           </button>
         </form>
       </div>
     </div>
   );
 };
-
 
 const CommentSection = ({ postId, comments = [], setComments, notify, currentUser }) => {
   const [newCommentText, setNewCommentText] = useState('');
@@ -1087,9 +1122,6 @@ const PostCard = ({ post, notify, currentUser, onDelete, onEdit }) => {
     </div>
   );
 };
-
-
-
 const PostsScreen = ({ business, currentUser, notify }) => {
   const [posts, setPosts] = useState([]);
   const [isPostFormOpen, setIsPostFormOpen] = useState(false);
@@ -1158,7 +1190,7 @@ const PostsScreen = ({ business, currentUser, notify }) => {
     if (!confirmed) return;
 
     try {
-      await axios.delete(`https://api.zooda.in/api/post/${postId}/comment/${commentId}`);
+      await axios.delete(`http://localhost:5000/api/post/${postId}/comment/${commentId}`);
       notify("success", "Comment deleted.");
       fetchPosts();
     } catch (error) {
@@ -1204,7 +1236,7 @@ const PostsScreen = ({ business, currentUser, notify }) => {
       )}
 
       {/* Posts List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
         {posts.length > 0 ? (
           posts.map((post) => (
             <PostCard

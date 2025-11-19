@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import axios from "axios";
-
+import logoUrl from './images/logo.png';
 const shuffleArray = (array: any[]) => {
   let currentIndex = array.length,
     randomIndex;
@@ -140,11 +140,11 @@ interface Promotion {
   updatedAt?: string;
 }
 
-const API_BASE_URL = "https://api.zooda.in";
+const API_BASE_URL = "http://localhost:5000";
 
 const getActivePromotions = async (): Promise<Promotion[]> => {
   try {
-    const response = await axios.get(`https://api.zooda.in/api/promotion`);
+    const response = await axios.get(`http://localhost:5000/api/promotion`);
 
     // Handle both response structures
     if (response.data.success && Array.isArray(response.data.data)) {
@@ -641,7 +641,7 @@ const Header = ({
   return (
     <header className="app-header">
       <div className="header-logo" aria-label="Zetova logo">
-        <span className="material-icons">hub</span>
+        <img src={logoUrl} alt="Logo" className="logo-image" />
       </div>
       <div className="search-container" onClick={onSearchClick}>
         <span className="material-icons">search</span>
@@ -683,13 +683,14 @@ const Header = ({
     </header>
   );
 };
-
 const UserProfilePage = ({
   user,
   onBack,
   onSelectCompany,
   onLogout,
   allCompanies,
+  API_BASE_URL,
+  axios,
 }: UserProfilePageProps) => {
   const [followingBusinesses, setFollowingBusinesses] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
@@ -705,6 +706,7 @@ const UserProfilePage = ({
   const [profileImage, setProfileImage] = useState(user.profileImage || "");
   const [saveLoading, setSaveLoading] = useState(false);
 
+  // Function to fetch followed businesses
   const fetchFollowingBusinesses = useCallback(async () => {
     if (!user._id) return;
     try {
@@ -726,7 +728,7 @@ const UserProfilePage = ({
     } finally {
       setLoading(false);
     }
-  }, [user._id, allCompanies]);
+  }, [user._id, allCompanies, API_BASE_URL, axios]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -742,20 +744,22 @@ const UserProfilePage = ({
       // Create preview URL
       const imageUrl = URL.createObjectURL(file);
       setProfileImage(imageUrl);
-      // Here you would typically upload the image to your server
+      // In a real app, you would handle image upload here
     }
   };
 
   const handleSaveProfile = async () => {
     try {
       setSaveLoading(true);
+      setError("");
       // Update user profile API call
+      // NOTE: In a real app, you'd upload the image file and send back the resulting URL
       await axios.put(`${API_BASE_URL}/api/user/${user._id}`, {
         ...formData,
-        profileImage // You might want to upload this separately
+        profileImage // Sending the temporary URL for display purposes only in this mockup
       });
       setIsEditing(false);
-      // Show success message or update parent state
+      // Success: Optionally update the user prop via a parent callback here.
     } catch (err: any) {
       console.error("Error updating profile:", err);
       setError(err.response?.data?.message || "Failed to update profile.");
@@ -782,9 +786,16 @@ const UserProfilePage = ({
 
   return (
     <div className="user-profile-page">
-     
+      <style>{profilepage}</style>
 
       <main className="profile-content">
+        {error && (
+          <div className="error-state">
+            <span className="material-icons">error_outline</span>
+            <p>{error}</p>
+          </div>
+        )}
+        
         {/* Profile Section */}
         <section className="profile-section">
           <div className="profile-header-card">
@@ -909,7 +920,7 @@ const UserProfilePage = ({
                 <div className="profile-info">
                   <h1 className="user-name">{user.name}</h1>
                   <p className="user-email">{user.email}</p>
-                  {user.phone && <p className="user-phone">{user.phone}</p>}
+                  {user.phone && <p className="user-phone">Phone: {user.phone}</p>}
                   {user.website && (
                     <a href={user.website} className="user-website" target="_blank" rel="noopener noreferrer">
                       {user.website}
@@ -922,7 +933,62 @@ const UserProfilePage = ({
           </div>
         </section>
 
-   
+        {/* Following Section */}
+        <section className="following-section">
+            <div className="section-header">
+                <h2>Businesses I Follow</h2>
+                <span className="follow-count">{followingBusinesses.length} following</span>
+            </div>
+
+            {loading ? (
+                <div className="loading-state">
+                    <span className="material-icons">hourglass_empty</span>
+                    <p>Loading followed businesses...</p>
+                </div>
+            ) : followingBusinesses.length === 0 ? (
+                <div className="empty-state">
+                    <span className="material-icons">not_interested</span>
+                    <p>You aren't following any businesses yet.</p>
+                    <p className="empty-subtext">Find exciting companies to follow!</p>
+                </div>
+            ) : (
+                <div className="businesses-grid">
+                    {followingBusinesses.map((company) => (
+                        <div 
+                            key={company._id} 
+                            className="business-card"
+                            onClick={() => onSelectCompany(company)}
+                        >
+                            <div className="business-avatar">
+                                {company.logoUrl ? (
+                                    <img 
+                                        src={company.logoUrl} 
+                                        alt={company.name}
+                                        onError={(e) => { e.currentTarget.src = 'https://placehold.co/50x50/363636/A8A8A8?text=C'; }}
+                                    />
+                                ) : (
+                                    <span className="material-icons">business</span>
+                                )}
+                            </div>
+                            <div className="business-info">
+                                <p className="business-name">{company.name}</p>
+                                <p className="business-category">{company.category}</p>
+                                <div className="business-stats">
+                                    <span className="stat">
+                                        <span className="material-icons">group</span>
+                                        {company.followers}
+                                    </span>
+                                    <span className="stat">
+                                        <span className="material-icons">article</span>
+                                        {company.posts}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </section>
 
         {/* Logout Section */}
         <section className="logout-section">
@@ -935,10 +1001,9 @@ const UserProfilePage = ({
     </div>
   );
 };
-
-// Add these styles
 const profilepage = `
 .user-profile-page {
+  /* Set overall background to black */
   background: #000000;
   min-height: 100vh;
   color: #ffffff;
@@ -969,7 +1034,7 @@ const profilepage = `
 }
 
 .user-profile-page .back-button:hover {
-  background: #363636;
+  background: #1f1f1f; /* Darker hover for black background */
 }
 
 .user-profile-page .profile-header h1 {
@@ -989,7 +1054,7 @@ const profilepage = `
 }
 
 .user-profile-page .profile-header-card {
-  background: #000000;
+  background: #121212; /* Slightly off-black card background */
   border: 1px solid #363636;
   border-radius: 12px;
   padding: 30px;
@@ -1028,7 +1093,8 @@ const profilepage = `
   position: absolute;
   bottom: 5px;
   right: 5px;
-  background: #0095f6;
+  /* Green color */
+  background: #4ade80; 
   border-radius: 50%;
   width: 36px;
   height: 36px;
@@ -1041,7 +1107,7 @@ const profilepage = `
 
 .avatar-upload-label .material-icons {
   font-size: 18px;
-  color: #ffffff;
+  color: #000000; /* Text on green should be black/dark */
 }
 
 .avatar-upload-input {
@@ -1092,12 +1158,15 @@ const profilepage = `
 }
 
 .profile-info .user-website {
-  color: #0095f6;
+  /* Green link color */
+  color: #4ade80; 
   text-decoration: none;
 }
 
 .profile-info .user-website:hover {
   text-decoration: underline;
+  /* Darker green on hover */
+  color: #16a34a; 
 }
 
 .profile-info .user-bio {
@@ -1139,7 +1208,8 @@ const profilepage = `
 .form-input:focus,
 .form-textarea:focus {
   outline: none;
-  border-color: #0095f6;
+  /* Green focus border */
+  border-color: #4ade80; 
 }
 
 .form-textarea {
@@ -1174,7 +1244,7 @@ const profilepage = `
   cursor: not-allowed;
 }
 
-.user-profile-page.btn-outline {
+.user-profile-page .btn-outline {
   background: transparent;
   border: 1px solid #363636;
   color: #ffffff;
@@ -1184,15 +1254,18 @@ const profilepage = `
   background: #363636;
 }
 
+/* Primary Button (Green) */
 .user-profile-page .btn-primary {
-  background: #0095f6;
-  color: #ffffff;
+  background: #4ade80; /* Primary Green */
+  color: #000000; /* Black text for contrast */
 }
 
 .user-profile-page .btn-primary:hover:not(:disabled) {
-  background: #0081d6;
+  background: #16a34a; /* Darker Green on hover */
+  color: #ffffff;
 }
 
+/* Danger Button (Red) */
 .user-profile-page .btn-danger {
   background: #dc2626;
   color: #ffffff;
@@ -1204,7 +1277,7 @@ const profilepage = `
 
 /* Following Section */
 .following-section {
-  background: #000000;
+  background: #121212; /* Slightly off-black card background */
   border: 1px solid #363636;
   border-radius: 12px;
   padding: 24px;
@@ -1227,10 +1300,11 @@ const profilepage = `
 
 .follow-count {
   font-size: 14px;
-  color: #a8a8a8;
-  background: #363636;
+  color: #000000;
+  background: #4ade80; /* Green badge */
   padding: 4px 12px;
   border-radius: 12px;
+  font-weight: 600;
 }
 
 /* Loading, Error, and Empty States */
@@ -1280,7 +1354,7 @@ const profilepage = `
 }
 
 .business-card:hover {
-  border-color: #555555;
+  border-color: #4ade80; /* Green hover border */
   transform: translateY(-2px);
 }
 
@@ -1362,6 +1436,12 @@ const profilepage = `
     text-align: center;
     padding: 20px;
   }
+  /* Ensure profile details align left in edit form on mobile */
+  .profile-header-card .profile-details {
+  width: 100%;
+    text-align: left;
+  }
+
 
   .profile-avatar-section {
     width: 100%;
@@ -1378,7 +1458,9 @@ const profilepage = `
   }
 
   .form-actions {
+    /* Stack buttons vertically on small screens */
     flex-direction: column;
+    gap: 8px; /* Slightly reduced gap for stacked buttons */
   }
 
   .btn {
@@ -1388,6 +1470,11 @@ const profilepage = `
 }
 
 @media (max-width: 480px) {
+  /* Reduce padding on the main card */
+  .user-profile-page .profile-header-card {
+    padding: 16px;
+  }
+
   .profile-avatar-container {
     width: 100px;
     height: 100px;
@@ -1405,6 +1492,238 @@ const profilepage = `
 const styleSheets = document.createElement("style");
 styleSheets.innerText = profilepage;
 document.head.appendChild(styleSheets);
+const PrivacyPolicyPage = () => {
+  return (
+      <div className="min-h-screen bg-black px-5 py-8 text-white">
+        <div className="max-w-3xl mx-auto bg-black border border-white/10 rounded-xl p-6 shadow-lg">
+
+          {/* HEADER */}
+          <header className="mb-6">
+            <h2 className="text-3xl font-extrabold text-green-400">Privacy Policy — Zooda.in</h2>
+            <p className="text-sm text-gray-400 mt-1">Last updated: 20 November 2025</p>
+          </header>
+
+          {/* MAIN CONTENT */}
+          <section className="space-y-6 text-gray-300 leading-relaxed">
+
+            <div>
+              <h3 className="text-xl font-semibold text-white mb-1">Information We Collect</h3>
+              <p>
+                We collect personal info you provide (name, email, phone, business details),
+                automatic data (IP, device, analytics), and data from third-party sign-ins.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-xl font-semibold text-white mb-1">How We Use Your Information</h3>
+              <p>
+                To display listings, improve services, power engagement rankings, enable ads,
+                and provide customer support. We do not sell personal data.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-xl font-semibold text-white mb-1">Cookies & Tracking</h3>
+              <p>
+                Cookies are used to keep you logged in and analyze site performance.
+                Disabling cookies may affect certain features.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-xl font-semibold text-white mb-1">Third Party Services</h3>
+              <p>
+                We use third-party services for hosting, analytics, and advertising.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-xl font-semibold text-white mb-1">Data Rights</h3>
+              <p>
+                You may request access or deletion of your data at:
+                <a href="mailto:zoodanew@gmail.com" className="text-green-400 underline ml-1">
+                  zoodanew@gmail.com
+                </a>
+              </p>
+            </div>
+
+            {/* BUTTONS */}
+            <div className="mt-6 flex flex-wrap gap-3">
+              <a
+                href="/?type=home"
+                className="px-5 py-2 rounded-full bg-green-500 text-black font-semibold hover:bg-green-600 transition"
+              >
+                Back to Home
+              </a>
+
+             
+            </div>
+          </section>
+
+          {/* MOBILE-FRIENDLY EXTENDED SECTION */}
+          <div className="mt-10 border-t border-white/10 pt-6">
+            <h4 className="font-semibold text-white mb-2 text-lg">Detailed Breakdown</h4>
+            <ol className="list-decimal list-inside space-y-2 text-gray-400">
+              <li>Personal info during signup or business listing.</li>
+              <li>Device, IP, and behavioral analytics.</li>
+              <li>Third-party login information.</li>
+            </ol>
+
+            <h4 className="font-semibold mt-6 mb-2 text-white">Sharing & Security</h4>
+            <p className="text-gray-300">
+              Shared only with service providers and legal authorities when required.
+              Protected with SSL, server-level security, and audits.
+            </p>
+          </div>
+        </div>
+      </div>
+  );
+};
+
+const TermsPage = () => {
+  return (
+      <div className="min-h-screen bg-black px-5 py-8 text-white">
+        <div className="max-w-3xl mx-auto bg-black border border-white/10 rounded-xl p-6 shadow-lg">
+          
+          <header className="mb-6">
+            <h2 className="text-3xl font-extrabold text-green-400">Terms & Conditions — Zooda.in</h2>
+            <p className="text-sm text-gray-400 mt-1">Last updated: 20 November 2025</p>
+          </header>
+
+          <section className="space-y-6 leading-relaxed text-gray-300">
+
+            <p>
+              By using Zooda.in, you agree to the terms below. Please read carefully before listing
+              or interacting with our platform.
+            </p>
+
+            <div>
+              <h3 className="text-xl font-semibold text-white mb-1">Eligibility & Listings</h3>
+              <p>
+                Users must be 18+ and authorized to manage the business listing. You must own the
+                content you upload.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-xl font-semibold text-white mb-1">Engagement-Based Ranking</h3>
+              <p>
+                Listings are ranked based on engagement such as likes, comments, and shares.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-xl font-semibold text-white mb-1">Advertising & Payments</h3>
+              <p>
+                Paid promotions follow advertising policies. Refund eligibility depends on internal review.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-xl font-semibold text-white mb-1">User Conduct</h3>
+              <p>
+                Manipulation of rankings using bots or fake accounts is prohibited and may lead to suspension.
+              </p>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <a
+                href="/?type=home"
+                className="px-5 py-2 rounded-full bg-green-500 text-black font-semibold hover:bg-green-600 transition"
+              >
+                Browse Listings
+              </a>
+
+           
+            </div>
+
+          </section>
+        </div>
+      </div>
+  );
+};
+const AboutPage = () => {
+  return (
+  
+      <div className="min-h-screen bg-black px-5 py-8 text-white">
+        <section className="max-w-5xl mx-auto bg-black border border-white/10 rounded-xl shadow-xl overflow-hidden">
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+
+            {/* LEFT SIDE */}
+            <div className="p-6 md:p-10">
+              <h2 className="text-3xl font-extrabold mb-3">
+                Welcome to <span className="text-green-400">Zooda.in</span>
+              </h2>
+
+              <p className="text-gray-300 leading-relaxed mb-6">
+                Zooda helps website-powered businesses shine with modern listings and
+                engagement-driven visibility.
+              </p>
+
+              <div className="flex flex-wrap gap-3">
+                <a href="/?type=home"
+                  className="px-5 py-3 rounded-full bg-green-500 text-black font-semibold hover:bg-green-600 transition">
+                  Explore Listings
+                </a>
+                <a href="/contact"
+                  className="px-5 py-3 rounded-full border border-green-500 text-green-400 hover:bg-white/5 transition">
+                  Advertise with us
+                </a>
+              </div>
+            </div>
+
+            {/* RIGHT SIDE */}
+            <div className="p-6 md:p-10 bg-gradient-to-br from-black to-white/5">
+              <h3 className="text-xl font-semibold text-white mb-2">Our Mission</h3>
+              <p className="text-gray-300 mb-4">
+                Empower every website-powered business with meaningful digital visibility.
+              </p>
+
+              <h3 className="text-xl font-semibold text-white mb-2">How We Help</h3>
+              <ul className="space-y-3 text-gray-300">
+                <li>• Boost visibility through engagement</li>
+                <li>• Rankings based on fairness, not money</li>
+                <li>• Smart ad placements</li>
+                <li>• Mobile-first browsing experience</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* BOTTOM CONTENT */}
+          <div className="px-6 md:px-10 py-8">
+            <h3 className="text-xl font-bold mb-3">Why We Built Zooda.in</h3>
+
+            <p className="text-gray-300 mb-4">
+              We built a platform where true engagement—not paid promotions—elevates businesses.
+            </p>
+
+            <h4 className="text-lg font-semibold mb-2">Our Promise</h4>
+            <ul className="list-disc list-inside text-gray-300 space-y-2">
+              <li>Transparent, engagement-driven rankings</li>
+              <li>Tools for small and large businesses</li>
+              <li>Continuous updates based on user feedback</li>
+              <li>Privacy-first platform</li>
+            </ul>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <a href="/contact"
+                className="px-6 py-3 rounded-full bg-green-500 text-black font-semibold hover:bg-green-600">
+                Contact Sales
+              </a>
+
+              <a href="/?type=home"
+                className="px-6 py-3 rounded-full border border-green-500 text-green-400 hover:bg-white/5">
+                Browse Businesses
+              </a>
+
+            </div>
+          </div>
+        </section>
+      </div>
+ 
+  );
+};
 
 interface CompanyListItemProps {
   company: Company;
@@ -1485,14 +1804,27 @@ const CompanyListItem = ({
       <div className="company-row single-line">
         <img src={company.logoUrl} alt="Logo" className="company-logo" />
         <div className="company-info">
+          
           <h2 id={`company-name-${company.rank}`} className="company-name">
             {company.name}
           </h2>
 
+
           <div className="company-stats">
             {/* ✅ Always show correct follower count */}
             <span>{followers} Followers</span>
-            <span>{company.engagementRate}% ER</span>
+       
+{company.engagementRate > 0 ? (
+  <div className="stat-item">
+    <span className="stat-number">{company.engagementRate}%</span>
+    <span className="stat-label">Engagement</span>
+  </div>
+) : (
+  <div className="stat-item">
+    <span className="stat-label">NEW</span>
+  </div>
+)}
+
             <button className="visit-btn" onClick={handleVisit}>
               Visit site
             </button>
@@ -2214,10 +2546,9 @@ const MobileMenu = ({
     <div className="mobile-menu-overlay" onClick={onClose}>
       <div className="mobile-menu" onClick={(e) => e.stopPropagation()}>
         <div className="mobile-menu-header">
-          <div className="mobile-menu-logo">
-            <span className="material-icons">hub</span>
-            <span className="logo-text">Zetova</span>
-          </div>
+           <div className="header-logo" aria-label="Zetova logo">
+        <img src={logoUrl} alt="Logo" className="logo-image" />
+      </div>
           <button onClick={onClose} className="mobile-menu-close">
             <span className="material-icons">close</span>
           </button>
@@ -2318,62 +2649,7 @@ const Banner = () => {
   );
 };
 
-// ---------------- ABOUT PAGE ----------------
-const AboutPage = () => {
-  return (
-    <main className="about-page">
-      <div className="about-container">
-        <h1 className="about-title">About Zooda</h1>
-        <div className="about-content">
-          <section className="about-section">
-            <h2>Our Mission</h2>
-            <p>
-              Zooda connects businesses with their audience through powerful
-              social media insights and engagement tools. We help companies
-              showcase their products, share their stories, and build meaningful
-              connections with their customers.
-            </p>
-          </section>
 
-          <section className="about-section">
-            <h2>What We Offer</h2>
-            <div className="features-grid">
-              <div className="feature-card">
-                <span className="material-icons">business</span>
-                <h3>Company Profiles</h3>
-                <p>Discover and follow your favorite businesses</p>
-              </div>
-              <div className="feature-card">
-                <span className="material-icons">feed</span>
-                <h3>Social Posts</h3>
-                <p>Explore engaging content from various companies</p>
-              </div>
-              <div className="feature-card">
-                <span className="material-icons">shopping_bag</span>
-                <h3>Product Showcase</h3>
-                <p>Browse and discover amazing products</p>
-              </div>
-              <div className="feature-card">
-                <span className="material-icons">trending_up</span>
-                <h3>Analytics</h3>
-                <p>Track engagement and performance metrics</p>
-              </div>
-            </div>
-          </section>
-
-          <section className="about-section">
-            <h2>Join Our Community</h2>
-            <p>
-              Whether you're a business looking to grow your presence or a
-              customer wanting to discover new brands, Zooda provides the
-              platform to connect, engage, and grow together.
-            </p>
-          </section>
-        </div>
-      </div>
-    </main>
-  );
-};
 
 interface AllPostsPageProps {
   onSelectPost: (post: Post) => void;
@@ -2401,8 +2677,8 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
 
       const endpoint =
         activeTab === "Following"
-          ? `https://api.zooda.in/api/posts/following/${user._id}`
-          : `https://api.zooda.in/api/posts/unfollowed/${user._id}`;
+          ? `http://localhost:5000/api/posts/following/${user._id}`
+          : `http://localhost:5000/api/posts/unfollowed/${user._id}`;
 
       const response = await axios.get(endpoint);
       const data = response.data;
@@ -2417,7 +2693,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
               `https://picsum.photos/600/400?random=${i}`;
 
             if (!imageUrl.startsWith("http")) {
-              imageUrl = `https://api.zooda.in${
+              imageUrl = `http://localhost:5000${
                 imageUrl.startsWith("/") ? "" : "/"
               }${imageUrl}`;
             }
@@ -2429,7 +2705,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
             if (companyId) {
               try {
                 const companyResponse = await axios.get(
-                  `https://api.zooda.in/api/companies/${companyId}`
+                  `http://localhost:5000/api/companies/${companyId}`
                 );
                 if (companyResponse.data.success) {
                   company = companyResponse.data.company;
@@ -2438,7 +2714,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
                   if (company.logoUrl) {
                     let logoUrl = company.logoUrl;
                     if (!logoUrl.startsWith("http")) {
-                      logoUrl = `https://api.zooda.in${
+                      logoUrl = `http://localhost:5000${
                         logoUrl.startsWith("/") ? "" : "/"
                       }${logoUrl}`;
                     }
@@ -2468,7 +2744,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
             if (user?._id && post._id) {
               try {
                 const likeResponse = await axios.get(
-                  `https://api.zooda.in/api/post/${post._id}/like-status/${user._id}`
+                  `http://localhost:5000/api/post/${post._id}/like-status/${user._id}`
                 );
                 isLiked = likeResponse.data.isLiked;
               } catch (err) {
@@ -2538,7 +2814,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
       };
       setPosts(updatedPosts);
 
-      await axios.post(`https://api.zooda.in/api/post/${postId}/like`, {
+      await axios.post(`http://localhost:5000/api/post/${postId}/like`, {
         userId: user._id,
       });
 
@@ -2566,7 +2842,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
 
     try {
       const response = await axios.post(
-        `https://api.zooda.in/api/post/${postId}/comment`,
+        `http://localhost:5000/api/post/${postId}/comment`,
         {
           text: commentText,
           userId: user._id,
@@ -2778,7 +3054,7 @@ const PostGridItem = ({
     if (!showComments && post._id) {
       try {
         const response = await axios.get(
-          `https://api.zooda.in/api/post/${post._id}/comments`
+          `http://localhost:5000/api/post/${post._id}/comments`
         );
         setPostComments(response.data.comments || []);
       } catch (err) {
@@ -2810,7 +3086,7 @@ const PostGridItem = ({
         setCommentText("");
         // Refresh comments
         const response = await axios.get(
-          `https://api.zooda.in/api/post/${post._id}/comments`
+          `http://localhost:5000/api/post/${post._id}/comments`
         );
         setPostComments(response.data.comments || []);
       } else if (result.error) {
@@ -2948,7 +3224,7 @@ const PostGridItem = ({
                 {postComments.map((comment, index) => (
                   <div key={index} className="comment-item">
                     <strong className="comment-username">
-                      {comment.user?.name || 'User'}
+                      {comment.userId?.name || 'User'}
                     </strong>
                     <span className="comment-text">{comment.text}</span>
                   </div>
@@ -3520,6 +3796,7 @@ interface ProfilePageProps {
   onLoginRequest?: () => void;
 }
 
+
 const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePageProps) => {
   const [activeTab, setActiveTab] = useState<"Posts" | "Products">("Posts");
   const [activePostCategory, setActivePostCategory] = useState("All");
@@ -3535,8 +3812,11 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showPostDetail, setShowPostDetail] = useState(false);
   const [showPostsGrid, setShowPostsGrid] = useState(false);
-const postCategories = ["All", "News", "Offer", "Update"]; // customize as needed
+  
+  // State for dynamic post categories
+  const [postCategories, setPostCategories] = useState<string[]>(["All"]);
 
+  // --- Omitted: checkFollowStatus useEffect (no changes) ---
   useEffect(() => {
     const checkFollowStatus = async () => {
       if (user?._id && company._id) {
@@ -3552,6 +3832,7 @@ const postCategories = ["All", "News", "Offer", "Update"]; // customize as neede
     };
     checkFollowStatus();
   }, [user?._id, company._id]);
+
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -3569,15 +3850,16 @@ const postCategories = ["All", "News", "Offer", "Update"]; // customize as neede
         const postsData = await postsRes.json();
         const productsData = await productsRes.json();
 
-        // Process posts to ensure they have proper image URLs and company data
-        const processedPosts = (postsData.posts || []).map((post: Post) => ({
+        const fetchedPosts = postsData.posts || [];
+        
+        // 1. Process posts
+        const processedPosts = fetchedPosts.map((post: Post) => ({
           ...post,
           _id: post._id || `post-${Math.random()}`,
           imageUrl: post.mediaUrl || post.imageUrl || `https://picsum.photos/600/400?random=${post._id}`,
           mediaUrl: post.mediaUrl || post.imageUrl,
           likes: post.likes || 0,
           comments: post.comments || 0,
-          // Add company data to each post for PostGridItem
           company: {
             _id: company._id,
             name: company.name,
@@ -3587,10 +3869,19 @@ const postCategories = ["All", "News", "Offer", "Update"]; // customize as neede
           }
         }));
 
-        console.log("Processed posts:", processedPosts);
         setPosts(processedPosts);
         setProducts(productsData.products || []);
         setError("");
+        
+        // 2. Extract unique categories from fetched posts
+        const uniqueCategories = [
+          "All", 
+          ...new Set(processedPosts.map((p: Post) => p.category).filter((c: string) => c))
+        ];
+        
+        // Set dynamic categories
+        setPostCategories(uniqueCategories);
+
       } catch (err) {
         console.error(err);
         setError("Error fetching company content. Please try again.");
@@ -3601,7 +3892,8 @@ const postCategories = ["All", "News", "Offer", "Update"]; // customize as neede
 
     fetchContent();
   }, [company._id]);
-
+  // --- Omitted: handleFollow, handlePostImageClick, handleClosePostDetail, handleShowPostsGrid, handleHidePostsGrid, handleLike, handleComment, handleShare (no changes) ---
+  
   const handleFollow = async () => {
     if (!user?._id) {
     // Open login page if not logged in
@@ -3666,7 +3958,7 @@ const postCategories = ["All", "News", "Offer", "Update"]; // customize as neede
       };
       setPosts(updatedPosts);
 
-      await axios.post(`https://api.zooda.in/api/post/${postId}/like`, {
+      await axios.post(`http://localhost:5000/api/post/${postId}/like`, {
         userId: user._id,
       });
 
@@ -3694,7 +3986,7 @@ const postCategories = ["All", "News", "Offer", "Update"]; // customize as neede
 
     try {
       const response = await axios.post(
-        `https://api.zooda.in/api/post/${postId}/comment`,
+        `http://localhost:5000/api/post/${postId}/comment`,
         {
           text: commentText,
           userId: user._id,
@@ -3734,11 +4026,14 @@ const postCategories = ["All", "News", "Offer", "Update"]; // customize as neede
     }
   };
 
+
+  // Filtering logic for posts
   const filteredPosts =
     activePostCategory === "All"
       ? posts
       : posts.filter((p) => p.category === activePostCategory);
 
+  // Filtering logic for products (no changes)
   const filteredProducts =
     activeProductTag === "All"
       ? products
@@ -3749,6 +4044,7 @@ const postCategories = ["All", "News", "Offer", "Update"]; // customize as neede
         );
 
   const productTags = ["All", "Offer", "Giveaway"];
+
 
   return (
     <div className="profile-page">
@@ -3777,10 +4073,13 @@ const postCategories = ["All", "News", "Offer", "Update"]; // customize as neede
                 <span className="stat-number">{followers}</span>
                 <span className="stat-label">Followers</span>
               </div>
-              <div className="stat-item">
-                <span className="stat-number">{company.engagementRate}%</span>
-                <span className="stat-label">Engagement</span>
-              </div>
+            {company.engagementRate > 0 && (
+  <div className="stat-item">
+    <span className="stat-number">{company.engagementRate}%</span>
+    <span className="stat-label">Engagement</span>
+  </div>
+)}
+
             </div>
           </div>
           <div className="profile-header-actions">
@@ -3792,7 +4091,7 @@ const postCategories = ["All", "News", "Offer", "Update"]; // customize as neede
             >
               Visit site
             </a>
-             <button
+              <button
     className={`btn btn-solid ${isFollowing ? "following" : ""}`}
     onClick={handleFollow}
   >
@@ -3828,17 +4127,18 @@ const postCategories = ["All", "News", "Offer", "Update"]; // customize as neede
           <>
             {activeTab === "Posts" && (
               <>
+                {/* Updated Post Categories Display */}
                <div className="post-tags">
-      {postCategories.map((category) => (
-        <button
-          key={category}
-          className={`tag-button ${activePostCategory === category ? "active" : ""}`}
-          onClick={() => setActivePostCategory(category)}
-        >
-          {category}
-        </button>
-      ))}
-    </div>
+     {postCategories.map((category) => (
+       <button
+         key={category}
+         className={`tag-button ${activePostCategory === category ? "active" : ""}`}
+         onClick={() => setActivePostCategory(category)}
+       >
+         {category}
+       </button>
+     ))}
+   </div>
                 {showPostDetail && selectedPost ? (
                   <div className="post-detail-overlay">
                     <div className="post-detail-container">
@@ -3850,14 +4150,14 @@ const postCategories = ["All", "News", "Offer", "Update"]; // customize as neede
                       </button>
                       <div className="post-detail-content">
                        <PostGridItem
-  post={posts.find(p => p._id === selectedPost._id) || selectedPost}
-  postIndex={posts.findIndex(p => p._id === selectedPost._id)}
-  onSelectPost={handlePostImageClick}
-  onLike={handleLike}
-  onComment={handleComment}
-  onShare={handleShare}
-  user={user}
-  onLoginRequest={onLoginRequest}
+ post={posts.find(p => p._id === selectedPost._id) || selectedPost}
+ postIndex={posts.findIndex(p => p._id === selectedPost._id)}
+ onSelectPost={handlePostImageClick}
+ onLike={handleLike}
+ onComment={handleComment}
+ onShare={handleShare}
+ user={user}
+ onLoginRequest={onLoginRequest}
 />
 
                       </div>
@@ -4010,304 +4310,81 @@ interface FooterProps {
   logoUrl?: string;
 }
 
-const Footer = ({ companyName = "Your Company", logoUrl }: FooterProps) => {
+const Footer = ({ companyName = "zooda" }: FooterProps) => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="footer">
-      <div className="footer-container">
-        {/* Main Footer Content - Three Columns */}
-        <div className="footer-main">
-          {/* Left: Logo and Company Name */}
-          <div className="footer-left">
-            <div className="footer-brand">
-              {logoUrl ? (
-                <img src={logoUrl} alt={companyName} className="footer-logo" />
-              ) : (
-                <div className="footer-logo-placeholder">
-                  {companyName.charAt(0)}
-                </div>
-              )}
-              <span className="footer-company-name">{companyName}</span>
+    <footer className="bg-black text-white border-t border-white/10 mt-10 px-4 py-8">
+      <div className="max-w-6xl mx-auto">
+
+        {/* TOP GRID */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+
+          {/* LEFT - LOGO + NAME */}
+          <div className="flex flex-col items-center md:items-start">
+            <div className="flex items-center gap-3">
+             
+                <img
+                  src={logoUrl}
+                  alt={companyName}
+                  className="w-12 h-12 object-cover rounded-lg"
+                />
+            
+
+              <span className="text-xl font-semibold">{companyName}</span>
             </div>
           </div>
 
-          {/* Middle: Navigation Links */}
-          <div className="footer-middle">
-            <nav className="footer-links">
-              <a href="/" className="footer-link">Home</a>
-              <a href="/about" className="footer-link">About Us</a>
-              <a href="/posts" className="footer-link">Posts</a>
-              <a href="/contact" className="footer-link">Contact</a>
-            </nav>
+          {/* MIDDLE - LINKS */}
+          <div className="flex flex-col text-center gap-2">
+            <a href="/" className="hover:text-green-400 transition">Home</a>
+            <a href="#about" className="hover:text-green-400 transition">About</a>
+            <a href="#posts" className="hover:text-green-400 transition">Posts</a>
+            <a href="#contact" className="hover:text-green-400 transition">Contact</a>
+            <a href="#terms" className="hover:text-green-400 transition">Terms</a>
+            <a href="#privacy" className="hover:text-green-400 transition">Privacy</a>
           </div>
 
-          {/* Right: Contact Details */}
-          <div className="footer-right">
-            <div className="footer-contact">
-              <div className="contact-item">
-                <span className="material-icons">email</span>
-                <span>contact@{companyName.toLowerCase().replace(/\s+/g, '')}.com</span>
-              </div>
-              <div className="contact-item">
-                <span className="material-icons">phone</span>
-                <span>+1 (555) 123-4567</span>
-              </div>
-              <div className="contact-item">
-                <span className="material-icons">location_on</span>
-                <span>123 Business St, City, State 12345</span>
-              </div>
-            </div>
+          {/* RIGHT - CONTACT */}
+          <div className="flex flex-col items-center md:items-end gap-2 text-gray-300">
+            <p className="flex items-center gap-2">
+              <span className="material-icons text-green-400">email</span>
+              contact@{companyName.toLowerCase().replace(/\s+/g, "")}.com
+            </p>
+
+            <p className="flex items-center gap-2">
+              <span className="material-icons text-green-400">phone</span>
+              +1 (555) 123-4567
+            </p>
+
+            <p className="flex items-center gap-2">
+              <span className="material-icons text-green-400">location_on</span>
+              123 Business St, City, State
+            </p>
           </div>
         </div>
 
-        {/* Bottom Section: Business Registration Link and Copyright */}
-        <div className="footer-bottom">
-          <div className="footer-business">
-            <a 
-              href="https://client.zooda.in" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="business-registration-link"
-            >
-              Business Registration - client.zooda.in
-            </a>
-          </div>
-          <div className="footer-copyright">
-            <p>&copy; {currentYear} {companyName}. All rights reserved.</p>
-          </div>
+        {/* BOTTOM SECTION */}
+        <div className="border-t border-white/10 mt-8 pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
+
+          <a
+            href="https://client.zooda.in"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-5 py-2 border-2 border-green-500 text-green-400 rounded-lg hover:bg-green-500 hover:text-black transition font-semibold"
+          >
+            Business Registration - client.zooda.in
+          </a>
+
+          <p className="text-gray-400 text-sm">
+            © {currentYear} {companyName}. All rights reserved.
+          </p>
         </div>
+
       </div>
     </footer>
   );
 };
-const footerStyles = `
-.footer {
-  background: #000;
-  border-top: 1px solid #222;
-  padding: 2rem 1rem 1rem;
-  margin-top: auto;
-}
-
-.footer-container {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-/* Main Footer Layout - Three Columns */
-.footer-main {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 2rem;
-  align-items: start;
-  margin-bottom: 2rem;
-}
-
-/* Left Section - Logo and Company Name */
-.footer-left {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.footer-brand {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.footer-logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  object-fit: cover;
-}
-
-.footer-logo-placeholder {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #00ff99, #00ccff);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #000;
-  font-weight: bold;
-  font-size: 1.2rem;
-}
-
-.footer-company-name {
-  color: #fff;
-  font-weight: 600;
-  font-size: 1.3rem;
-  background: linear-gradient(135deg, #00ff99, #00ccff);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Middle Section - Navigation Links */
-.footer-middle {
-  display: flex;
-  justify-content: center;
-}
-
-.footer-links {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.footer-link {
-  color: #ccc;
-  text-decoration: none;
-  font-size: 0.95rem;
-  transition: all 0.2s ease;
-  padding: 0.25rem 0;
-  text-align: center;
-}
-
-.footer-link:hover {
-  color: #00ff99;
-  transform: translateX(5px);
-}
-
-/* Right Section - Contact Details */
-.footer-right {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.footer-contact {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.contact-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #ccc;
-  font-size: 0.9rem;
-}
-
-.contact-item .material-icons {
-  font-size: 1.1rem;
-  color: #00ccff;
-}
-
-/* Bottom Section */
-.footer-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 1.5rem;
-  border-top: 1px solid #333;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.business-registration-link {
-  color: #00ccff;
-  text-decoration: none;
-  font-size: 0.95rem;
-  font-weight: 600;
-  padding: 0.6rem 1.2rem;
-  border: 2px solid #00ccff;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-  background: transparent;
-}
-
-.business-registration-link:hover {
-  background: #00ccff;
-  color: #000;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 204, 255, 0.3);
-}
-
-.footer-copyright {
-  color: #888;
-  font-size: 0.9rem;
-}
-
-.footer-copyright p {
-  margin: 0;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .footer-main {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-    text-align: center;
-  }
-
-  .footer-left,
-  .footer-middle,
-  .footer-right {
-    justify-content: center;
-  }
-
-  .footer-brand {
-    justify-content: center;
-  }
-
-  .footer-links {
-    align-items: center;
-  }
-
-  .footer-contact {
-    align-items: center;
-  }
-
-  .footer-bottom {
-    flex-direction: column;
-    text-align: center;
-    gap: 1rem;
-  }
-
-  .business-registration-link {
-    order: -1; /* Move business link to top on mobile */
-  }
-}
-
-@media (max-width: 480px) {
-  .footer {
-    padding: 1.5rem 0.5rem 0.5rem;
-  }
-
-  .footer-company-name {
-    font-size: 1.1rem;
-  }
-
-  .footer-link {
-    font-size: 0.9rem;
-  }
-
-  .contact-item {
-    font-size: 0.85rem;
-  }
-
-  .business-registration-link {
-    font-size: 0.9rem;
-    padding: 0.5rem 1rem;
-  }
-
-  .footer-copyright {
-    font-size: 0.85rem;
-  }
-}
-`;
-
-// Add footer styles to document
-if (typeof document !== "undefined") {
-  const footerStyleSheet = document.createElement("style");
-  footerStyleSheet.textContent = footerStyles;
-  document.head.appendChild(footerStyleSheet);
-}
-// ---------------- LOGIN MODAL ----------------
-// ---------------- LOGIN MODAL ----------------
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -4669,72 +4746,76 @@ const RegisterModal = ({ isOpen, onClose, onRegister, onOpenLogin }: RegisterMod
       setLoading(false);
     }
   };
+// ---------------- REGISTER MODAL (UPDATED handleSubmit) ----------------
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    
-    // Validation
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long");
-      return;
-    }
-    
-    if (interests.length === 0) {
-      setError("Please select at least one interest");
-      return;
-    }
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError("");
 
-    setRegisterLoading(true);
+  if (password.length < 6) {
+    setError("Password must be at least 6 characters long");
+    return;
+  }
 
-    try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/register`, {
-        name,
-        email,
-        password,
-        interests,
-      });
+  if (interests.length === 0) {
+    setError("Please select at least one interest");
+    return;
+  }
 
-      if (!response.data.success && response.data.message) {
-        throw new Error(response.data.message);
-      }
+  setRegisterLoading(true);
 
-      const userData = response.data.user || response.data.data || response.data;
+  try {
+    const response = await axios.post(`${API_BASE_URL}/api/auth/register`, {
+      name,
+      email,
+      password,
+      interests,
+    });
 
-      const userToStore = {
-        _id: userData._id,
-        name: userData.name,
-        email: userData.email,
-        isLoggedIn: false,
-      };
+    if (!response.data.success && response.data.message) {
+      throw new Error(response.data.message);
+    }
 
-      localStorage.setItem("recentRegisteredUser", JSON.stringify(userToStore));
-      onRegister(userToStore);
-      
-      // Clear form
-      setName("");
-      setEmail("");
-      setPassword("");
-      setInterests([]);
-      setError("");
-      
-      // Close register modal and open login modal
-      onClose();
-      setTimeout(() => {
-        onOpenLogin();
-      }, 300);
-      
-    } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          "Registration failed. Please try again."
-      );
-    } finally {
-      setRegisterLoading(false);
-    }
-  };
+    const userData = response.data.user || response.data.data || response.data;
 
+    // NOTE: We keep isLoggedIn: false here as registration doesn't guarantee a live session/token,
+    // but the parent component may interpret the successful registration as an event to handle.
+    const userToStore = {
+      _id: userData._id,
+      name: userData.name,
+      email: userData.email,
+      isLoggedIn: false, 
+    };
+
+    // Save registered user data (optional, used for potential pre-fill)
+    localStorage.setItem("recentRegisteredUser", JSON.stringify(userToStore));
+
+    // 1. Notify parent via callback (analogous to onLogin in LoginModal)
+    onRegister(userToStore);
+
+    // Clear form fields
+    setName("");
+    setEmail("");
+    setPassword("");
+    setInterests([]);
+    setError("");
+
+    // 2. Close modal (analogous to onClose in LoginModal)
+    onClose();
+
+    // ❌ REMOVED: setTimeout(() => onOpenLogin(), 300);
+    // ❌ REMOVED: setTimeout(() => { window.location.href = "/?type=home"; }, 500);
+
+  } catch (err: any) {
+    setError(
+      err.response?.data?.message ||
+        err.message ||
+        "Registration failed. Please try again."
+    );
+  } finally {
+    setRegisterLoading(false);
+  }
+};
   const toggleInterest = (itemName: string) => {
     if (interests.includes(itemName)) {
       setInterests(interests.filter((i) => i !== itemName));
@@ -4856,12 +4937,7 @@ const RegisterModal = ({ isOpen, onClose, onRegister, onOpenLogin }: RegisterMod
               </div>
             )}
             
-            {interests.length > 0 && (
-              <div className="selected-interests">
-                <strong>Selected: </strong>
-                {interests.join(", ")}
-              </div>
-            )}
+           
           </div>
 
           <button 
@@ -4892,47 +4968,51 @@ const RegisterModal = ({ isOpen, onClose, onRegister, onOpenLogin }: RegisterMod
 };
 
 // ---------------- HASH ROUTER HOOK ----------------
+// ---------------- HASH ROUTER HOOK ----------------
 const useHashRouter = () => {
-  const [currentHash, setCurrentHash] = useState<string>(window.location.hash);
+  const normalizeHash = (hash: string) => {
+    if (!hash) return "";
+    return hash.replace(/^#\/?|^!#\/?|^#!/, "");
+  };
+
+  const [currentHash, setCurrentHash] = useState<string>(normalizeHash(window.location.hash));
 
   useEffect(() => {
     const handleHashChange = () => {
-      setCurrentHash(window.location.hash);
+      setCurrentHash(normalizeHash(window.location.hash));
+      window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
   const navigate = (hash: string) => {
-    window.location.hash = hash;
+    if (!hash.startsWith("#")) window.location.hash = `#${hash}`;
+    else window.location.hash = hash;
   };
 
   const getRouteParams = () => {
-    const hash = currentHash.replace('#', '');
-    
-    // Parse hash routes
-    if (hash.startsWith('company-')) {
-      return { type: 'company', id: hash.replace('company-', '') };
-    } else if (hash.startsWith('post-')) {
-      return { type: 'post', id: hash.replace('post-', '') };
-    } else if (hash === 'profile') {
-      return { type: 'profile' };
-    } else if (hash === 'posts') {
-      return { type: 'posts' };
-    } else if (hash === 'about') {
-      return { type: 'about' };
-    } else if (hash === 'search') {
-      return { type: 'search' };
-    } else {
-      return { type: 'home' };
+    const hash = currentHash;
+
+    if (hash.startsWith("company-")) return { type: "company", id: hash.replace("company-", "") };
+    if (hash.startsWith("post-")) return { type: "post", id: hash.replace("post-", "") };
+
+    switch (hash) {
+      case "profile": return { type: "profile" };
+      case "posts": return { type: "posts" };
+      case "about": return { type: "about" };
+      case "privacy": return { type: "privacy" };
+      case "terms": return { type: "terms" };
+      case "search": return { type: "search" };
+      default: return { type: "home" };
     }
   };
 
   return {
     currentHash,
     navigate,
-    routeParams: getRouteParams()
+    routeParams: getRouteParams(),
   };
 };
 
@@ -5322,100 +5402,99 @@ const App = () => {
     );
   };
 
-  const renderPage = () => {
-    console.log("Current route:", routeParams.type, "selectedPostId:", selectedPostId, "selectedPost:", selectedPost);
-    
-    if (isSearchActive) {
+const renderPage = () => {
+  console.log("Current route:", routeParams.type, "selectedPostId:", selectedPostId, "selectedPost:", selectedPost);
+
+  if (isSearchActive) {
+    return (
+      <SearchPage
+        searchQuery={searchQuery}
+        searchResults={searchResults}
+        onSelectSearchResult={handleSelectSearchResult}
+        onSearchChange={handleSearch}
+        onBack={handleSearchBack}
+        loading={searchLoading}
+      />
+    );
+  }
+
+  if (selectedPostId) {
+    if (selectedPost) {
       return (
-        <SearchPage
-          searchQuery={searchQuery}
-          searchResults={searchResults}
-          onSelectSearchResult={handleSelectSearchResult}
-          onSearchChange={handleSearch}
-          onBack={handleSearchBack}
-          loading={searchLoading}
+        <PostDetailPage
+          data={selectedPost}
+          onBack={() => window.history.back()}
+          user={user || undefined}
+          onLoginRequest={() => setShowLoginModal(true)}
         />
       );
+    } else {
+      return <div className="loading-container"><p>Loading post...</p></div>;
     }
+  }
 
-    if (selectedPostId) {
-      if (selectedPost) {
+  if (selectedCompany) {
+    return (
+      <ProfilePage
+        company={selectedCompany}
+        onSelectPost={handleSelectPost}
+        user={user || undefined}
+        onLoginRequest={() => setShowLoginModal(true)}
+      />
+    );
+  }
+
+  switch (routeParams.type) {
+    case "profile":
+      if (user) {
         return (
-          <PostDetailPage
-            data={selectedPost}
+          <UserProfilePage
+            user={user}
             onBack={() => window.history.back()}
-            user={user || undefined}
-            onLoginRequest={() => setShowLoginModal(true)}
+            onSelectCompany={handleSelectCompany}
+            onLogout={handleLogout}
+            allCompanies={allCompanies}
           />
         );
       } else {
-        return (
-          <div className="loading-container">
-            <p>Loading post...</p>
-          </div>
-        );
+        return <div className="p-4 text-center">Please log in to view your profile.</div>;
       }
-    }
 
-    if (selectedCompany) {
+    case "posts":
       return (
-        <ProfilePage
-          company={selectedCompany}
+        <AllPostsPage
           onSelectPost={handleSelectPost}
           user={user || undefined}
           onLoginRequest={() => setShowLoginModal(true)}
         />
       );
-    }
 
-    switch (routeParams.type) {
-      case "profile":
-        if (user) {
-          return (
-            <UserProfilePage
-              user={user}
-              onBack={() => window.history.back()}
-              onSelectCompany={handleSelectCompany}
-              onLogout={handleLogout}
-              allCompanies={allCompanies}
-            />
-          );
-        } else {
-          return (
-            <div className="p-4 text-center">
-              Please log in to view your profile.
-            </div>
-          );
-        }
+    case "about":
+      return <AboutPage />;
 
-      case "posts":
-        return (
-          <AllPostsPage
-            onSelectPost={handleSelectPost}
+    case "privacy":
+      return <PrivacyPolicyPage />;
+
+    case "terms":
+      return <TermsPage />;
+
+    case "home":
+    default:
+      return (
+        <>
+          <Banner />
+          <CompanyListPage
+            onSelectCompany={handleSelectCompany}
             user={user || undefined}
-            onLoginRequest={() => setShowLoginModal(true)}
+            allPromotions={allPromotions}
+            onClaimOffer={handleClaimOffer}
           />
-        );
+          <Footer />
+        </>
+      );
+  }
+};
 
-      case "about":
-        return <AboutPage />;
-
-      case "home":
-      default:
-        return (
-          <>
-            <Banner />
-            <CompanyListPage
-              onSelectCompany={handleSelectCompany}
-              user={user || undefined}
-              allPromotions={allPromotions}
-              onClaimOffer={handleClaimOffer}
-            />
-            <Footer />
-          </>
-        );
-    }
-  };
 
   return (
    <div className="app-container">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-const API_BASE = 'https://api.zooda.in/api';
+const API_BASE = 'http://localhost:5000/api';
 
 function App() {
   const [adminData, setAdminData] = useState({
