@@ -558,10 +558,15 @@ body {
     padding: 16px 0;
     gap: 16px;
 }
-
 .profile-header-content {
     flex-grow: 1;
+    width: 50%;              /* Force width to 50% */
+    max-width: 50%;          /* Prevent expanding */
+    word-wrap: break-word;   /* Wrap long words */
+    overflow-wrap: break-word; 
+    white-space: normal;     /* Allow multi-line text */
 }
+
 
 .profile-logo {
     width: 80px;
@@ -597,7 +602,7 @@ body {
     flex-shrink: 0;
     flex-direction: column;
     position: relative;
-    right: 80px;
+    right: 30px;
 }
 
 .profile-divider {

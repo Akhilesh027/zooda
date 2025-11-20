@@ -5,7 +5,7 @@ import {
   ShoppingBag, TrendingUp, Menu, X, ArrowLeft, Heart, MessageCircle, 
   Clock, CheckCircle, Hourglass, XCircle, Users, Calendar, Eye, Edit, Edit3, Globe, Phone, MapPin
 } from 'lucide-react';
-
+import logo from './images/logo.png';
 import { Trash2 } from "lucide-react";
 
 // --- CONFIGURATION ---
@@ -1264,11 +1264,36 @@ const ProductCreateForm = ({ businessId, onClose, onSuccess, notify, existingPro
   const [formData, setFormData] = useState({ 
     name: existingProduct?.name || '', 
     productLink: existingProduct?.productLink || '', 
-    price: existingProduct?.price || '' 
+    price: existingProduct?.price || '',
+    tags: existingProduct?.tags || []   // <-- NEW
   });
+
+  const [currentTag, setCurrentTag] = useState(""); // For input
   const [imageFile, setImageFile] = useState(null);
   const [prodLoading, setProdLoading] = useState(false);
 
+  // ---------------------- ADD TAG ----------------------
+  const handleAddTag = () => {
+    if (!currentTag.trim()) return;
+    if (formData.tags.includes(currentTag.trim())) return;
+
+    setFormData({
+      ...formData,
+      tags: [...formData.tags, currentTag.trim()]
+    });
+
+    setCurrentTag("");
+  };
+
+  // ---------------------- REMOVE TAG ----------------------
+  const handleRemoveTag = (tag) => {
+    setFormData({
+      ...formData,
+      tags: formData.tags.filter(t => t !== tag)
+    });
+  };
+
+  // ---------------------- SUBMIT ----------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setProdLoading(true);
@@ -1278,19 +1303,19 @@ const ProductCreateForm = ({ businessId, onClose, onSuccess, notify, existingPro
     data.append('name', formData.name);
     data.append('productLink', formData.productLink);
     data.append('price', formData.price);
+    data.append('tags', JSON.stringify(formData.tags));   // <-- IMPORTANT
+
     if (imageFile) {
       data.append('image', imageFile);
     }
 
     try {
       if (existingProduct) {
-        // Update existing product
         await axios.put(`/products/${existingProduct._id}`, data, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
         notify('success', 'Product updated successfully.');
       } else {
-        // Create new product
         await axios.post('/products', data, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
@@ -1309,6 +1334,8 @@ const ProductCreateForm = ({ businessId, onClose, onSuccess, notify, existingPro
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
+        
+        {/* HEADER */}
         <div className="flex justify-between items-center border-b pb-3 mb-4">
           <h3 className="text-xl font-semibold">
             {existingProduct ? 'Edit Product' : 'Create New Product'}
@@ -1317,7 +1344,11 @@ const ProductCreateForm = ({ businessId, onClose, onSuccess, notify, existingPro
             <X size={24} />
           </button>
         </div>
+
+        {/* FORM */}
         <form onSubmit={handleSubmit} className="space-y-4">
+
+          {/* NAME */}
           <input 
             type="text" 
             placeholder="Product Name" 
@@ -1326,6 +1357,8 @@ const ProductCreateForm = ({ businessId, onClose, onSuccess, notify, existingPro
             onChange={(e) => setFormData({...formData, name: e.target.value})}
             className="w-full p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
           />
+
+          {/* PRODUCT LINK */}
           <input 
             type="text" 
             placeholder="Product Link" 
@@ -1333,6 +1366,8 @@ const ProductCreateForm = ({ businessId, onClose, onSuccess, notify, existingPro
             onChange={(e) => setFormData({...formData, productLink: e.target.value})}
             className="w-full p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
           />
+
+          {/* PRICE */}
           <input 
             type="number" 
             step="0.01" 
@@ -1342,6 +1377,52 @@ const ProductCreateForm = ({ businessId, onClose, onSuccess, notify, existingPro
             onChange={(e) => setFormData({...formData, price: e.target.value})}
             className="w-full p-3 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
           />
+
+          {/* ----------------- TAGS SECTION ----------------- */}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Product Tags</label>
+
+            {/* INPUT + ADD BUTTON */}
+            <div className="flex gap-2 mt-2">
+              <input 
+                type="text"
+                placeholder="Add a tag (Ex: shoes, mens, premium)"
+                value={currentTag}
+                onChange={(e) => setCurrentTag(e.target.value)}
+                className="flex-1 p-3 border rounded-lg"
+              />
+              <button 
+                type="button"
+                onClick={handleAddTag}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Add
+              </button>
+            </div>
+
+            {/* TAG LIST */}
+            <div className="flex flex-wrap gap-2 mt-3">
+              {formData.tags.map((tag, index) => (
+                <span 
+                  key={index}
+                  className="bg-gray-200 px-3 py-1 rounded-full text-sm flex items-center gap-2"
+                >
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveTag(tag)}
+                    className="text-red-500 text-xs font-bold"
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* ----------------- IMAGE SECTION ----------------- */}
+          
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Product Image {!existingProduct && '(Required)'}
@@ -1349,6 +1430,7 @@ const ProductCreateForm = ({ businessId, onClose, onSuccess, notify, existingPro
             <p className="text-xs text-gray-500 mt-1">
               Recommended size: <strong>300px × 300px</strong>
             </p>
+
             <input 
               type="file" 
               required={!existingProduct}
@@ -1356,6 +1438,7 @@ const ProductCreateForm = ({ businessId, onClose, onSuccess, notify, existingPro
               onChange={(e) => setImageFile(e.target.files[0])}
               className="w-full text-sm text-gray-500 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
             />
+
             {existingProduct?.image?.url && !imageFile && (
               <div className="mt-2">
                 <p className="text-sm text-gray-600">Current Image:</p>
@@ -1367,6 +1450,8 @@ const ProductCreateForm = ({ businessId, onClose, onSuccess, notify, existingPro
               </div>
             )}
           </div>
+
+          {/* SUBMIT BUTTON */}
           <button 
             type="submit" 
             disabled={prodLoading}
@@ -1376,11 +1461,13 @@ const ProductCreateForm = ({ businessId, onClose, onSuccess, notify, existingPro
               ? (existingProduct ? 'Updating...' : 'Adding Product...') 
               : (existingProduct ? 'Update Product' : 'Add Product')}
           </button>
+
         </form>
       </div>
     </div>
   );
 };
+
 const ProductCard = ({ product, onDelete, onEdit }) => (
   <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 relative">
     <img
@@ -2124,7 +2211,9 @@ const Sidebar = ({ currentPage, onPageChange, business, onLogout, isOpen, onClos
     >
       <div>
         <div className="flex justify-between items-center mb-10">
-          <h1 className="text-2xl font-extrabold text-indigo-600">SocialDash</h1>
+          <h1 className="text-2xl font-extrabold text-indigo-600">
+          <img src={logo} alt="Logo" className="inline w-50 h-50 mr-2" />
+          </h1>
           <button
             onClick={onClose}
             className="lg:hidden text-gray-600 hover:text-indigo-600"

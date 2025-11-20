@@ -20,10 +20,29 @@ function App() {
   const [suspendReason, setSuspendReason] = useState('');
   const [showSuspendModal, setShowSuspendModal] = useState(null);
 
-  useEffect(() => {
-    loadAdminData();
-  }, []);
+  // Password protection states
+  const [passwordInput, setPasswordInput] = useState('');
+  const [authenticated, setAuthenticated] = useState(false);
+  const ADMIN_PASSWORD = '224466'; // change this to your password
 
+  useEffect(() => {
+    if (authenticated) {
+      loadAdminData();
+    }
+  }, [authenticated]);
+
+  // -------------------- Password Check --------------------
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault();
+    if (passwordInput === ADMIN_PASSWORD) {
+      setAuthenticated(true);
+    } else {
+      alert('Incorrect password! Access denied.');
+      setPasswordInput('');
+    }
+  };
+
+  // -------------------- API Request Helper --------------------
   const makeAPIRequest = async (endpoint, options = {}) => {
     const token = localStorage.getItem('adminToken');
     const config = {
@@ -54,6 +73,7 @@ function App() {
     }
   };
 
+  // -------------------- Load Admin Data --------------------
   const loadAdminData = async () => {
     setAdminLoading(true);
     try {
@@ -89,128 +109,61 @@ function App() {
     }
   };
 
-  // Business Management Functions
+  // -------------------- Business Management Functions --------------------
   const approveBusiness = async (businessId) => {
-    const result = await makeAPIRequest(`/admin/businesses/${businessId}/approve`, {
-      method: 'PUT'
-    });
-    
-    if (result.success) {
-      await loadAdminData();
-      alert('Business approved successfully!');
-    } else {
-      alert('Error approving business: ' + result.error);
-    }
+    const result = await makeAPIRequest(`/admin/businesses/${businessId}/approve`, { method: 'PUT' });
+    if (result.success) { await loadAdminData(); alert('Business approved successfully!'); }
+    else alert('Error approving business: ' + result.error);
   };
 
   const rejectBusiness = async (businessId, reason) => {
-    const result = await makeAPIRequest(`/admin/businesses/${businessId}/reject`, {
-      method: 'PUT',
-      body: JSON.stringify({ reason })
-    });
-    
-    if (result.success) {
-      await loadAdminData();
-      alert('Business rejected successfully!');
-    } else {
-      alert('Error rejecting business: ' + result.error);
-    }
+    const result = await makeAPIRequest(`/admin/businesses/${businessId}/reject`, { method: 'PUT', body: JSON.stringify({ reason }) });
+    if (result.success) { await loadAdminData(); alert('Business rejected successfully!'); }
+    else alert('Error rejecting business: ' + result.error);
   };
 
   const suspendBusiness = async (businessId, reason) => {
-    const result = await makeAPIRequest(`/admin/businesses/${businessId}/suspend`, {
-      method: 'PUT',
-      body: JSON.stringify({ reason })
-    });
-    
-    if (result.success) {
-      await loadAdminData();
-      alert('Business suspended successfully!');
-    } else {
-      alert('Error suspending business: ' + result.error);
-    }
+    const result = await makeAPIRequest(`/admin/businesses/${businessId}/suspend`, { method: 'PUT', body: JSON.stringify({ reason }) });
+    if (result.success) { await loadAdminData(); alert('Business suspended successfully!'); }
+    else alert('Error suspending business: ' + result.error);
   };
 
   const activateBusiness = async (businessId) => {
-    const result = await makeAPIRequest(`/admin/businesses/${businessId}/activate`, {
-      method: 'PUT'
-    });
-    
-    if (result.success) {
-      await loadAdminData();
-      alert('Business activated successfully!');
-    } else {
-      alert('Error activating business: ' + result.error);
-    }
+    const result = await makeAPIRequest(`/admin/businesses/${businessId}/activate`, { method: 'PUT' });
+    if (result.success) { await loadAdminData(); alert('Business activated successfully!'); }
+    else alert('Error activating business: ' + result.error);
   };
 
   const deleteBusiness = async (businessId) => {
-    const result = await makeAPIRequest(`/admin/businesses/${businessId}`, {
-      method: 'DELETE'
-    });
-    
-    if (result.success) {
-      await loadAdminData();
-      alert('Business deleted successfully!');
-    } else {
-      alert('Error deleting business: ' + result.error);
-    }
+    const result = await makeAPIRequest(`/admin/businesses/${businessId}`, { method: 'DELETE' });
+    if (result.success) { await loadAdminData(); alert('Business deleted successfully!'); }
+    else alert('Error deleting business: ' + result.error);
   };
 
   const deletePost = async (businessId, postId) => {
-    const result = await makeAPIRequest(`/admin/businesses/${businessId}/posts/${postId}`, {
-      method: 'DELETE'
-    });
-    
-    if (result.success) {
-      alert('Post deleted successfully!');
-      return { success: true };
-    } else {
-      return { success: false, error: result.error };
-    }
+    const result = await makeAPIRequest(`/admin/businesses/${businessId}/posts/${postId}`, { method: 'DELETE' });
+    if (result.success) { alert('Post deleted successfully!'); return { success: true }; }
+    else return { success: false, error: result.error };
   };
 
   const deleteProduct = async (businessId, productId) => {
-    const result = await makeAPIRequest(`/admin/businesses/${businessId}/products/${productId}`, {
-      method: 'DELETE'
-    });
-    
-    if (result.success) {
-      alert('Product deleted successfully!');
-      return { success: true };
-    } else {
-      return { success: false, error: result.error };
-    }
+    const result = await makeAPIRequest(`/admin/businesses/${businessId}/products/${productId}`, { method: 'DELETE' });
+    if (result.success) { alert('Product deleted successfully!'); return { success: true }; }
+    else return { success: false, error: result.error };
   };
 
   const deletePromotion = async (businessId, promotionId) => {
-    const result = await makeAPIRequest(`/admin/businesses/${businessId}/promotions/${promotionId}`, {
-      method: 'DELETE'
-    });
-    
-    if (result.success) {
-      alert('Promotion deleted successfully!');
-      return { success: true };
-    } else {
-      return { success: false, error: result.error };
-    }
+    const result = await makeAPIRequest(`/admin/businesses/${businessId}/promotions/${promotionId}`, { method: 'DELETE' });
+    if (result.success) { alert('Promotion deleted successfully!'); return { success: true }; }
+    else return { success: false, error: result.error };
   };
 
   const updateBusiness = async (businessId, updateData) => {
-    const result = await makeAPIRequest(`/admin/businesses/${businessId}`, {
-      method: 'PUT',
-      body: JSON.stringify(updateData)
-    });
-    
-    if (result.success) {
-      await loadAdminData();
-      alert('Business updated successfully!');
-    } else {
-      alert('Error updating business: ' + result.error);
-    }
+    const result = await makeAPIRequest(`/admin/businesses/${businessId}`, { method: 'PUT', body: JSON.stringify(updateData) });
+    if (result.success) { await loadAdminData(); alert('Business updated successfully!'); }
+    else alert('Error updating business: ' + result.error);
   };
 
-  // New functions to fetch business-specific data
   const fetchBusinessPosts = async (businessId) => {
     const result = await makeAPIRequest(`/post/${businessId}`);
     return result.success ? result.data : [];
@@ -226,61 +179,32 @@ function App() {
     return result.success ? result.data : [];
   };
 
-  // Category Management Functions
+  // -------------------- Category Management Functions --------------------
   const createCategory = async (categoryName) => {
-    const result = await makeAPIRequest('/admin/categories', {
-      method: 'POST',
-      body: JSON.stringify({ name: categoryName })
-    });
-    
-    if (result.success) {
-      await loadAdminData();
-      return { success: true, message: 'Category created successfully!' };
-    } else {
-      return { success: false, error: result.error };
-    }
+    const result = await makeAPIRequest('/admin/categories', { method: 'POST', body: JSON.stringify({ name: categoryName }) });
+    if (result.success) { await loadAdminData(); return { success: true, message: 'Category created successfully!' }; }
+    else return { success: false, error: result.error };
   };
 
   const deleteCategory = async (categoryId) => {
-    const result = await makeAPIRequest(`/admin/categories/${categoryId}`, {
-      method: 'DELETE'
-    });
-    
-    if (result.success) {
-      await loadAdminData();
-      return { success: true, message: 'Category deleted successfully!' };
-    } else {
-      return { success: false, error: result.error };
-    }
+    const result = await makeAPIRequest(`/admin/categories/${categoryId}`, { method: 'DELETE' });
+    if (result.success) { await loadAdminData(); return { success: true, message: 'Category deleted successfully!' }; }
+    else return { success: false, error: result.error };
   };
 
   const createSubcategory = async (categoryId, subcategoryName) => {
-    const result = await makeAPIRequest(`/admin/categories/${categoryId}/subcategories`, {
-      method: 'POST',
-      body: JSON.stringify({ name: subcategoryName })
-    });
-    
-    if (result.success) {
-      await loadAdminData();
-      return { success: true, message: 'Subcategory created successfully!' };
-    } else {
-      return { success: false, error: result.error };
-    }
+    const result = await makeAPIRequest(`/admin/categories/${categoryId}/subcategories`, { method: 'POST', body: JSON.stringify({ name: subcategoryName }) });
+    if (result.success) { await loadAdminData(); return { success: true, message: 'Subcategory created successfully!' }; }
+    else return { success: false, error: result.error };
   };
 
   const deleteSubcategory = async (categoryId, subcategoryId) => {
-    const result = await makeAPIRequest(`/admin/categories/${categoryId}/subcategories/${subcategoryId}`, {
-      method: 'DELETE'
-    });
-    
-    if (result.success) {
-      await loadAdminData();
-      return { success: true, message: 'Subcategory deleted successfully!' };
-    } else {
-      return { success: false, error: result.error };
-    }
+    const result = await makeAPIRequest(`/admin/categories/${categoryId}/subcategories/${subcategoryId}`, { method: 'DELETE' });
+    if (result.success) { await loadAdminData(); return { success: true, message: 'Subcategory deleted successfully!' }; }
+    else return { success: false, error: result.error };
   };
 
+  // -------------------- Admin Tabs --------------------
   const adminTabs = [
     { id: 'overview', name: 'Overview', icon: 'fa-chart-bar' },
     { id: 'approvals', name: 'Business Approvals', icon: 'fa-building' },
@@ -322,11 +246,7 @@ function App() {
           />
         );
       case 'analytics':
-        return (
-          <AdminAnalyticsTab
-            businessAnalytics={adminData.businessAnalytics}
-          />
-        );
+        return <AdminAnalyticsTab businessAnalytics={adminData.businessAnalytics} />;
       case 'categories':
         return (
           <CategoryManagementTab
@@ -356,14 +276,30 @@ function App() {
     }
   };
 
+  // -------------------- Render Password Form if Not Authenticated --------------------
+  if (!authenticated) {
+    return (
+      <div className="password-prompt-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <form onSubmit={handlePasswordSubmit} className="password-form" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '2rem', border: '1px solid #ccc', borderRadius: '8px' }}>
+          <h2>Enter Admin Password</h2>
+          <input
+            type="password"
+            placeholder="Password"
+            value={passwordInput}
+            onChange={(e) => setPasswordInput(e.target.value)}
+            required
+            style={{ padding: '0.5rem', fontSize: '1rem' }}
+          />
+          <button type="submit" style={{ padding: '0.5rem', fontSize: '1rem', cursor: 'pointer' }}>Submit</button>
+        </form>
+      </div>
+    );
+  }
+
+  // -------------------- Render Full Admin Panel --------------------
   return (
     <div className="app-layout">
-      {sidebarOpen && (
-        <div 
-          className="overlay active" 
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {sidebarOpen && <div className="overlay active" onClick={() => setSidebarOpen(false)} />}
       
       <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
@@ -452,7 +388,6 @@ function App() {
     </div>
   );
 }
-
 // Admin Overview Tab Component
 function AdminOverviewTab({ stats }) {
   if (!stats) {

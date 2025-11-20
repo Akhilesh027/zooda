@@ -3789,6 +3789,7 @@ const PostDetailPage = ({ data, onBack, user, onLoginRequest }: PostDetailPagePr
   );
 };
 // ---------------- PROFILE PAGE ----------------
+
 interface ProfilePageProps {
   company: Company;
   onSelectPost: (post: Post, company: Company) => void;
@@ -3796,11 +3797,16 @@ interface ProfilePageProps {
   onLoginRequest?: () => void;
 }
 
-
-const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePageProps) => {
+const ProfilePage = ({
+  company,
+  onSelectPost,
+  user,
+  onLoginRequest,
+}: ProfilePageProps) => {
   const [activeTab, setActiveTab] = useState<"Posts" | "Products">("Posts");
   const [activePostCategory, setActivePostCategory] = useState("All");
   const [activeProductTag, setActiveProductTag] = useState("All");
+
   const [posts, setPosts] = useState<Post[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -3808,36 +3814,44 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
   const [followers, setFollowers] = useState<number>(
     parseInt(company.followers) || 0
   );
+
   const [isFollowing, setIsFollowing] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showPostDetail, setShowPostDetail] = useState(false);
   const [showPostsGrid, setShowPostsGrid] = useState(false);
-  
-  // State for dynamic post categories
-  const [postCategories, setPostCategories] = useState<string[]>(["All"]);
 
-  // --- Omitted: checkFollowStatus useEffect (no changes) ---
+  // Dynamic categories/tags
+  const [postCategories, setPostCategories] = useState<string[]>(["All"]);
+  const [productTags, setProductTags] = useState<string[]>(["All"]);
+
+  // -----------------------------------------------------------
+  // FOLLOW CHECK
+  // -----------------------------------------------------------
   useEffect(() => {
     const checkFollowStatus = async () => {
-      if (user?._id && company._id) {
-        try {
-          const res = await axios.get(
-            `${API_BASE_URL}/api/follow/${company._id}/status/${user._id}`
-          );
-          setIsFollowing(res.data.isFollowing);
-        } catch (err) {
-          console.error("Error checking follow status:", err);
-        }
+      if (!user?._id) return;
+
+      try {
+        const res = await axios.get(
+          `${API_BASE_URL}/api/follow/${company._id}/status/${user._id}`
+        );
+        setIsFollowing(res.data.isFollowing);
+      } catch (err) {
+        console.error("Error checking follow status:", err);
       }
     };
+
     checkFollowStatus();
   }, [user?._id, company._id]);
 
-
+  // -----------------------------------------------------------
+  // FETCH POSTS + PRODUCTS
+  // -----------------------------------------------------------
   useEffect(() => {
     const fetchContent = async () => {
       try {
         setLoading(true);
+
         const [postsRes, productsRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/post/${company._id}`),
           fetch(`${API_BASE_URL}/api/product/${company._id}`),
@@ -3850,13 +3864,18 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
         const postsData = await postsRes.json();
         const productsData = await productsRes.json();
 
+        // ----------------------
+        // PROCESS POSTS
+        // ----------------------
         const fetchedPosts = postsData.posts || [];
-        
-        // 1. Process posts
+
         const processedPosts = fetchedPosts.map((post: Post) => ({
           ...post,
           _id: post._id || `post-${Math.random()}`,
-          imageUrl: post.mediaUrl || post.imageUrl || `https://picsum.photos/600/400?random=${post._id}`,
+          imageUrl:
+            post.mediaUrl ||
+            post.imageUrl ||
+            `https://picsum.photos/600/400?random=${post._id}`,
           mediaUrl: post.mediaUrl || post.imageUrl,
           likes: post.likes || 0,
           comments: post.comments || 0,
@@ -3865,23 +3884,45 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
             name: company.name,
             username: company.name.toLowerCase().replace(/[\s.]/g, "_"),
             logoUrl: company.logoUrl,
-            businessName: company.name
-          }
+          },
         }));
 
         setPosts(processedPosts);
-        setProducts(productsData.products || []);
-        setError("");
-        
-        // 2. Extract unique categories from fetched posts
-        const uniqueCategories = [
-          "All", 
-          ...new Set(processedPosts.map((p: Post) => p.category).filter((c: string) => c))
+
+        // ----------------------
+        // SET PRODUCTS
+        // ----------------------
+        const productArray = productsData.products || [];
+        setProducts(productArray);
+
+        // ----------------------
+        // EXTRACT DYNAMIC PRODUCT TAGS
+        // ----------------------
+        const uniqueTags = [
+          "All",
+          ...new Set(
+            productArray
+              .flatMap((p: Product) => p.tags || [])
+              .map((t: string) => t.trim())
+              .filter((t: string) => t.length > 0)
+          ),
         ];
-        
-        // Set dynamic categories
+        setProductTags(uniqueTags);
+
+        // ----------------------
+        // EXTRACT POST CATEGORIES
+        // ----------------------
+        const uniqueCategories = [
+          "All",
+          ...new Set(
+            processedPosts
+              .map((p: Post) => p.category)
+              .filter((c: string) => c && c.trim().length > 0)
+          ),
+        ];
         setPostCategories(uniqueCategories);
 
+        setError("");
       } catch (err) {
         console.error(err);
         setError("Error fetching company content. Please try again.");
@@ -3892,35 +3933,35 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
 
     fetchContent();
   }, [company._id]);
-  // --- Omitted: handleFollow, handlePostImageClick, handleClosePostDetail, handleShowPostsGrid, handleHidePostsGrid, handleLike, handleComment, handleShare (no changes) ---
-  
+
+  // -----------------------------------------------------------
+  // FOLLOW HANDLER
+  // -----------------------------------------------------------
   const handleFollow = async () => {
     if (!user?._id) {
-    // Open login page if not logged in
-    if (onLoginRequest) {
-      onLoginRequest();
+      if (onLoginRequest) onLoginRequest();
+      return;
     }
-    return;
-  }
-    
+
     try {
       const res = await axios.post(
         `${API_BASE_URL}/api/follow/${company._id}`,
-        {
-          userId: user._id,
-        }
+        { userId: user._id }
       );
+
       if (res.data.success) {
         setFollowers(res.data.followers);
         setIsFollowing(res.data.isFollowing);
       }
-    } catch (err: any) {
-      console.error(err);
+    } catch (err) {
+      console.error("Follow error:", err);
     }
   };
 
+  // -----------------------------------------------------------
+  // POST DETAIL HANDLERS
+  // -----------------------------------------------------------
   const handlePostImageClick = (post: Post) => {
-    console.log("Post image clicked:", post._id);
     setSelectedPost(post);
     setShowPostDetail(true);
   };
@@ -3930,62 +3971,45 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
     setSelectedPost(null);
   };
 
-  const handleShowPostsGrid = () => {
-    setShowPostsGrid(true);
-  };
-
-  const handleHidePostsGrid = () => {
-    setShowPostsGrid(false);
-  };
-
-  // Post engagement handlers
+  // -----------------------------------------------------------
+  // LIKE / COMMENT / SHARE
+  // -----------------------------------------------------------
   const handleLike = async (postId: string, postIndex: number) => {
-    if (!user?._id) {
-      return;
-    }
+    if (!user?._id) return;
 
     try {
       const updatedPosts = [...posts];
       const post = updatedPosts[postIndex];
-      const newLikeStatus = !post.isLiked;
-      const newLikesCount = newLikeStatus ? post.likes + 1 : post.likes - 1;
 
-      // Optimistic update
-      updatedPosts[postIndex] = {
-        ...post,
-        isLiked: newLikeStatus,
-        likes: newLikesCount
-      };
+      const newLike = !post.isLiked;
+      post.isLiked = newLike;
+      post.likes += newLike ? 1 : -1;
+
       setPosts(updatedPosts);
 
-      await axios.post(`https://api.zooda.in/api/post/${postId}/like`, {
-        userId: user._id,
-      });
-
-    } catch (err: any) {
-      // Revert on error
-      const revertedPosts = [...posts];
-      revertedPosts[postIndex] = {
-        ...revertedPosts[postIndex],
-        isLiked: !revertedPosts[postIndex].isLiked,
-        likes: revertedPosts[postIndex].isLiked 
-          ? revertedPosts[postIndex].likes - 1 
-          : revertedPosts[postIndex].likes + 1
-      };
-      setPosts(revertedPosts);
-      console.error("Error liking post:", err);
+      await axios.post(
+        `https://api.zooda.in/api/post/${postId}/like`,
+        { userId: user._id }
+      );
+    } catch (err) {
+      console.error("Like error:", err);
     }
   };
 
-  const handleComment = async (postId: string, postIndex: number, commentText: string) => {
+  const handleComment = async (
+    postId: string,
+    postIndex: number,
+    commentText: string
+  ) => {
     if (!user?._id) {
       return { success: false, error: "Please login to comment" };
     }
 
-    if (!commentText.trim()) return { success: false, error: "Comment cannot be empty" };
+    if (!commentText.trim())
+      return { success: false, error: "Comment cannot be empty" };
 
     try {
-      const response = await axios.post(
+      const res = await axios.post(
         `https://api.zooda.in/api/post/${postId}/comment`,
         {
           text: commentText,
@@ -3993,18 +4017,15 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
         }
       );
 
-      // Update comment count
-      const updatedPosts = [...posts];
-      updatedPosts[postIndex] = {
-        ...updatedPosts[postIndex],
-        comments: response.data.commentsCount
-      };
-      setPosts(updatedPosts);
+      const updated = [...posts];
+      updated[postIndex].comments = res.data.commentsCount;
+
+      setPosts(updated);
 
       return { success: true };
-    } catch (err: any) {
-      console.error("Error commenting:", err);
-      return { success: false, error: err.message };
+    } catch (err) {
+      console.error("Comment error:", err);
+      return { success: false };
     }
   };
 
@@ -4012,244 +4033,171 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Check out this post',
-          text: post.content || 'Interesting post',
+          title: "Check out this post",
+          text: post.content,
           url: window.location.href,
         });
-      } catch (err) {
-        console.log('Share cancelled');
-      }
+      } catch {}
     } else {
-      // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href);
-      alert('Link copied to clipboard!');
+      alert("Link copied!");
     }
   };
 
-
-  // Filtering logic for posts
+  // -----------------------------------------------------------
+  // FILTERING
+  // -----------------------------------------------------------
   const filteredPosts =
     activePostCategory === "All"
       ? posts
       : posts.filter((p) => p.category === activePostCategory);
 
-  // Filtering logic for products (no changes)
   const filteredProducts =
     activeProductTag === "All"
       ? products
       : products.filter((p) =>
-          p.tags
-            ?.map((t) => t.toLowerCase())
+          (p.tags || [])
+            .map((t) => t.toLowerCase())
             .includes(activeProductTag.toLowerCase())
         );
 
-  const productTags = ["All", "Offer", "Giveaway"];
-
-
+  // -----------------------------------------------------------
+  // RENDER
+  // -----------------------------------------------------------
   return (
     <div className="profile-page">
       <main className="profile-content">
+        {/* -------------------- HEADER -------------------- */}
         <section className="profile-header">
-          <img
-            src={`${company.logoUrl}`}
-            alt={company.name}
-            className="profile-logo"
-          />
+          <img src={company.logoUrl} className="profile-logo" />
+
           <div className="profile-header-content">
-            <h2 className="profile-name">{company.name}</h2>
-            <p className="profile-description">
-              {company.description || "No description available."}
-            </p>
+            <h2>{company.name}</h2>
+            <p>{company.description || "No description available."}</p>
+
             <div className="profile-stats-grid">
               <div className="stat-item">
                 <span className="stat-number">{posts.length}</span>
                 <span className="stat-label">Posts</span>
               </div>
+
               <div className="stat-item">
                 <span className="stat-number">{products.length}</span>
                 <span className="stat-label">Products</span>
               </div>
+
               <div className="stat-item">
                 <span className="stat-number">{followers}</span>
                 <span className="stat-label">Followers</span>
               </div>
-            {company.engagementRate > 0 && (
-  <div className="stat-item">
-    <span className="stat-number">{company.engagementRate}%</span>
-    <span className="stat-label">Engagement</span>
-  </div>
-)}
 
+              {company.engagementRate > 0 && (
+                <div className="stat-item">
+                  <span className="stat-number">
+                    {company.engagementRate}%
+                  </span>
+                  <span className="stat-label">Engagement</span>
+                </div>
+              )}
             </div>
           </div>
+
           <div className="profile-header-actions">
-            <a
-              href={company.siteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-outline"
-            >
+            <a href={company.siteUrl} target="_blank" className="btn btn-outline">
               Visit site
             </a>
-              <button
-    className={`btn btn-solid ${isFollowing ? "following" : ""}`}
-    onClick={handleFollow}
-  >
-    {isFollowing ? "Unfollow" : "Follow"}
-  </button>
+
+            <button
+              className={`btn btn-solid ${isFollowing ? "following" : ""}`}
+              onClick={handleFollow}
+            >
+              {isFollowing ? "Unfollow" : "Follow"}
+            </button>
           </div>
         </section>
-        <nav className="tabs profile-tabs" role="tablist">
+
+        {/* -------------------- TABS -------------------- */}
+        <nav className="tabs profile-tabs">
           <button
             className={`tab ${activeTab === "Posts" ? "active" : ""}`}
             onClick={() => setActiveTab("Posts")}
           >
             Posts
           </button>
+
           <button
             className={`tab ${activeTab === "Products" ? "active" : ""}`}
             onClick={() => setActiveTab("Products")}
-            data-tab="Products"
           >
             Products
           </button>
         </nav>
 
+        {/* ==============================================================
+            CONTENT AREA
+        ============================================================== */}
         {loading ? (
-          <div className="loading-container">
-            <p>Loading content...</p>
-          </div>
+          <p>Loading...</p>
         ) : error ? (
-          <div className="error-container">
-            <p className="text-red-500">{error}</p>
-          </div>
+          <p className="text-red-500">{error}</p>
         ) : (
           <>
+            {/* -------------------- POSTS TAB -------------------- */}
             {activeTab === "Posts" && (
               <>
-                {/* Updated Post Categories Display */}
-               <div className="post-tags">
-     {postCategories.map((category) => (
-       <button
-         key={category}
-         className={`tag-button ${activePostCategory === category ? "active" : ""}`}
-         onClick={() => setActivePostCategory(category)}
-       >
-         {category}
-       </button>
-     ))}
-   </div>
-                {showPostDetail && selectedPost ? (
-                  <div className="post-detail-overlay">
-                    <div className="post-detail-container">
-                      <button 
-                        className="close-post-detail"
-                        onClick={handleClosePostDetail}
-                      >
-                        <span className="material-icons">close</span>
-                      </button>
-                      <div className="post-detail-content">
-                       <PostGridItem
- post={posts.find(p => p._id === selectedPost._id) || selectedPost}
- postIndex={posts.findIndex(p => p._id === selectedPost._id)}
- onSelectPost={handlePostImageClick}
- onLike={handleLike}
- onComment={handleComment}
- onShare={handleShare}
- user={user}
- onLoginRequest={onLoginRequest}
-/>
+                <div className="post-tags">
+                  {postCategories.map((category) => (
+                    <button
+                      key={category}
+                      className={`tag-button ${
+                        activePostCategory === category ? "active" : ""
+                      }`}
+                      onClick={() => setActivePostCategory(category)}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
 
-                      </div>
-                    </div>
-                  </div>
-                ) : showPostsGrid ? (
-                  <div className="posts-grid-view">
-                    <div className="posts-grid-header">
-                      <button 
-                        className="back-to-images-btn"
-                        onClick={handleHidePostsGrid}
-                      >
-                        <span className="material-icons">arrow_back</span>
-                        Back to Images
-                      </button>
-                      <h3>All Posts</h3>
-                    </div>
-                    <div className="posts-feed">
-                      {filteredPosts.length > 0 ? (
-                        filteredPosts.map((post, index) => (
-                          <PostGridItem
-                            key={post._id}
-                            post={post}
-                            postIndex={index}
-                            onSelectPost={handlePostImageClick}
-                            onLike={handleLike}
-                            onComment={handleComment}
-                            onShare={handleShare}
-                            user={user}
-                            onLoginRequest={onLoginRequest}
+                {/* IMAGE GRID */}
+                <div className="posts-images-view">
+                  <div className="images-grid">
+                    {filteredPosts.length > 0 ? (
+                      filteredPosts.map((post, index) => (
+                        <div
+                          key={post._id}
+                          className="post-image-item"
+                          onClick={() => handlePostImageClick(post)}
+                        >
+                          <img
+                            src={post.imageUrl}
+                            className="post-image"
+                            onError={(e) =>
+                              (e.currentTarget.src =
+                                `https://picsum.photos/400/400?random=${post._id}`)
+                            }
                           />
-                        ))
-                      ) : (
-                        <div className="no-posts">
-                          <p>No posts yet.</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="posts-images-view">
-                    <div className="images-grid">
-                      {filteredPosts.length > 0 ? (
-                        filteredPosts.map((post, index) => (
-                          <div 
-                            key={post._id} 
-                            className="post-image-item"
-                            onClick={() => handlePostImageClick(post)}
-                          >
-                            <img
-                              src={post.imageUrl || post.mediaUrl}
-                              alt={`Post by ${company.name}`}
-                              className="post-image"
-                              onError={(e) => {
-                                e.currentTarget.src = `https://picsum.photos/400/400?random=${post._id}`;
-                              }}
-                            />
-                            <div className="post-image-overlay">
-                              <div className="post-stats">
-                                <span className="stat">
-                                  <span className="material-icons">favorite</span>
-                                  {post.likes || 0}
-                                </span>
-                                <span className="stat">
-                                  <span className="material-icons">chat_bubble</span>
-                                  {post.comments || 0}
-                                </span>
-                              </div>
+                          <div className="post-image-overlay">
+                            <div className="post-stats">
+                              <span className="stat">
+                                ❤️ {post.likes}
+                              </span>
+                              <span className="stat">
+                                💬 {post.comments}
+                              </span>
                             </div>
                           </div>
-                        ))
-                      ) : (
-                        <div className="no-posts">
-                          <p>No posts yet.</p>
                         </div>
-                      )}
-                    </div>
-                    {filteredPosts.length > 0 && (
-                      <div className="view-all-posts-btn-container">
-                        <button 
-                          className="view-all-posts-btn"
-                          onClick={handleShowPostsGrid}
-                        >
-                          View All Posts
-                        </button>
-                      </div>
+                      ))
+                    ) : (
+                      <p className="no-posts">No posts yet.</p>
                     )}
                   </div>
-                )}
+                </div>
               </>
             )}
 
+            {/* -------------------- PRODUCTS TAB -------------------- */}
             {activeTab === "Products" && (
               <>
                 <div className="product-tags">
@@ -4273,17 +4221,17 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
                         <a
                           href={product.productLink}
                           target="_blank"
-                          rel="noopener noreferrer"
                           className="product-link"
                         >
                           <img
-                            src={`${product.image?.url || product.imageUrl}`}
-                            alt={product.name}
+                            src={product.image?.url || product.imageUrl}
                             className="product-image"
-                            onError={(e) => {
-                              e.currentTarget.src = `https://picsum.photos/400/400?random=${product._id}`;
-                            }}
+                            onError={(e) =>
+                              (e.currentTarget.src =
+                                `https://picsum.photos/400/400?random=${product._id}`)
+                            }
                           />
+
                           <div className="product-info">
                             <p className="product-name">{product.name}</p>
                             <p className="product-price">₹{product.price}</p>
@@ -4292,9 +4240,7 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
                       </div>
                     ))
                   ) : (
-                    <div className="empty-state">
-                      <p className="text-center">No products yet.</p>
-                    </div>
+                    <p>No products yet.</p>
                   )}
                 </section>
               </>
@@ -4305,6 +4251,8 @@ const ProfilePage = ({ company, onSelectPost, user, onLoginRequest }: ProfilePag
     </div>
   );
 };
+
+
 interface FooterProps {
   companyName?: string;
   logoUrl?: string;

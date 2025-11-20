@@ -261,7 +261,10 @@ const ProductSchema = new mongoose.Schema({
   price: { type: Number, required: true, min: 0 },
 
   sku: { type: String, unique: true },
-
+tags: {
+  type: [String],
+  default: []
+},
   // Single image instead of array
   image: {
     url: { type: String, required: true },
@@ -1320,7 +1323,7 @@ app.get("/api/business/:businessId/followers", async (req, res) => {
 });
 app.post("/api/products", authMiddleware, upload.single("image"), async (req, res) => {
   try {
-    const { name, productLink, price } = req.body;
+    const { name, productLink, price, tags } = req.body;
 
     if (!name || !price) {
       return res.status(400).json({ message: "Product name and price are required" });
@@ -1336,7 +1339,7 @@ app.post("/api/products", authMiddleware, upload.single("image"), async (req, re
     let image = null;
     if (req.file && req.file.path) {
       image = {
-        url: req.file.path, // Cloudinary gives the secure URL here
+        url: req.file.path,
         alt: name,
       };
     }
@@ -1346,13 +1349,27 @@ app.post("/api/products", authMiddleware, upload.single("image"), async (req, re
       return res.status(400).json({ message: "Invalid price format" });
     }
 
+    // -----------------------------
+    // ✅ Parse Tags (Array Support)
+    // -----------------------------
+    let parsedTags = [];
+    if (tags) {
+      try {
+        parsedTags = JSON.parse(tags); // because FormData sends it as string
+        if (!Array.isArray(parsedTags)) parsedTags = [];
+      } catch {
+        parsedTags = [];
+      }
+    }
+
     const product = await Product.create({
       user: req.user.id,
       business: business._id,
       name,
       productLink: productLink || null,
       price: parsedPrice,
-      image, // ✅ stores Cloudinary image URL
+      image,
+      tags: parsedTags, // ✅ Store tags
     });
 
     const populatedProduct = await Product.findById(product._id)
@@ -1364,6 +1381,7 @@ app.post("/api/products", authMiddleware, upload.single("image"), async (req, re
       message: "Product created successfully",
       product: populatedProduct,
     });
+
   } catch (error) {
     console.error("Create product error:", error);
 
@@ -1374,6 +1392,7 @@ app.post("/api/products", authMiddleware, upload.single("image"), async (req, re
     res.status(500).json({ message: "Server error while creating product" });
   }
 });
+
 app.get("/api/business/search", async (req, res) => {
   try {
     const { filter, category } = req.query;
@@ -1466,8 +1485,6 @@ app.post("/api/promotions", authMiddleware, upload.single("image"), async (req, 
     });
   }
 });
-
-
 app.get('/api/promotions/:businessId', async (req, res) => {
   try {
     const { businessId } = req.params;
@@ -1495,7 +1512,6 @@ app.get('/api/promotions/:businessId', async (req, res) => {
     res.status(500).json({ message: 'Server error while fetching promotions' });
   }
 });
-
 app.get('/api/promotion', async (req, res) => {
   try {
     const { page = 1, limit = 10, type, isActive, companyId, businessId, search } = req.query;
