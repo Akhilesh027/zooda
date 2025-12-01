@@ -1150,7 +1150,233 @@ app.get('/api/business', async (req, res) => {
     });
   }
 });
-app.post("/api/posts", authMiddleware, upload.single("media"), async (req, res) => {
+app.put("/api/business/:businessId", authMiddleware, upload.single("media"), async (req, res) => {
+  try {
+    const businessId = req.params.businessId;
+    
+    // Validate business ID
+    if (!businessId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Business ID is required" 
+      });
+    }
+
+    // Check if business exists and user owns it
+    const business = await Business.findOne({
+      _id: businessId,
+      user: req.user.id // Ensure user owns the business
+    });
+
+    if (!business) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Business not found or unauthorized" 
+      });
+    }
+
+    // Extract fields from request body
+    const {
+      businessName,
+      businessCategory,
+      businessDescription,
+      businessWebsite,
+      businessAddress,
+      businessPhone,
+    } = req.body;
+
+    // Validate required fields if they're being updated
+    if (businessName !== undefined) {
+      if (!businessName || businessName.trim() === "") {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Business name is required" 
+        });
+      }
+      
+      // Validate business name length
+      if (businessName.length < 2 || businessName.length > 100) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Business name must be between 2 and 100 characters" 
+        });
+      }
+
+      // Check for duplicate business name (excluding current business)
+      const duplicateBusiness = await Business.findOne({
+        businessName: new RegExp(`^${businessName.trim()}$`, "i"),
+        _id: { $ne: businessId } // Exclude current business
+      });
+      
+      if (duplicateBusiness) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "A business with this name already exists" 
+        });
+      }
+    }
+
+    // Validate business description if being updated
+    if (businessDescription !== undefined) {
+      if (!businessDescription || businessDescription.trim() === "") {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Business description is required" 
+        });
+      }
+      
+      if (businessDescription.length < 10 || businessDescription.length > 500) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Business description must be between 10 and 500 characters" 
+        });
+      }
+    }
+
+    // Validate business address if being updated
+    if (businessAddress !== undefined) {
+      if (!businessAddress || businessAddress.trim() === "") {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Business address is required" 
+        });
+      }
+      
+      if (businessAddress.length > 200) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Business address must be less than 200 characters" 
+        });
+      }
+    }
+
+    // Validate business category if being updated
+    if (businessCategory !== undefined) {
+      if (!businessCategory || businessCategory.trim() === "") {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Business category is required" 
+        });
+      }
+    }
+
+    // Validate phone number if being updated
+    if (businessPhone !== undefined) {
+      if (!businessPhone || businessPhone.trim() === "") {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Phone number is required" 
+        });
+      }
+      
+      const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+      const cleanPhone = businessPhone.replace(/[\s\-\(\)]/g, "");
+      if (!phoneRegex.test(cleanPhone)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Please enter a valid phone number" 
+        });
+      }
+    }
+
+    // Validate website if being updated
+    if (businessWebsite !== undefined && businessWebsite.trim() !== "") {
+      try {
+        new URL(businessWebsite);
+      } catch (error) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Please enter a valid website URL" 
+        });
+      }
+    }
+
+    // Prepare update data
+    const updateData = {};
+
+    // Only include fields that are provided (not undefined)
+    if (businessName !== undefined) updateData.businessName = businessName.trim();
+    if (businessCategory !== undefined) updateData.businessCategory = businessCategory;
+    if (businessDescription !== undefined) updateData.businessDescription = businessDescription.trim();
+    if (businessAddress !== undefined) updateData.businessAddress = businessAddress.trim();
+    
+    if (businessPhone !== undefined) {
+      updateData.businessPhone = businessPhone.replace(/[\s\-\(\)]/g, "");
+    }
+    
+    if (businessWebsite !== undefined) {
+      updateData.businessWebsite = businessWebsite.trim() !== "" ? businessWebsite.trim() : null;
+    }
+
+    // ✅ Handle file upload - if new file is uploaded, update logoUrl
+    if (req.file && req.file.path) {
+      updateData.logoUrl = req.file.path; // Cloudinary URL
+      
+      // Optional: Delete old logo from Cloudinary if exists
+      // You might want to implement this based on your storage logic
+    }
+
+    // Update the business
+    const updatedBusiness = await Business.findByIdAndUpdate(
+      businessId,
+      { $set: updateData },
+      { 
+        new: true, // Return the updated document
+        runValidators: true // Run model validators
+      }
+    ).populate("user", "firstName lastName email avatar");
+
+    // ✅ Update user role to business_owner if not already (for consistency)
+    const user = await User.findById(req.user.id);
+    if (user.role !== "business_owner" || !user.hasBusiness) {
+      await User.findByIdAndUpdate(req.user.id, {
+        role: "business_owner",
+        hasBusiness: true,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Business profile updated successfully!",
+      business: updatedBusiness,
+    });
+
+  } catch (error) {
+    console.error("Update business error:", error);
+
+    // Handle Mongoose validation errors
+    if (error.name === "ValidationError") {
+      const errors = Object.values(error.errors).map((err) => err.message);
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors,
+      });
+    }
+
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "Business with this name already exists",
+      });
+    }
+
+    // Handle cast error (invalid ID)
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid business ID",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error while updating business",
+      ...(process.env.NODE_ENV === "development" && { error: error.message }),
+    });
+  }
+});app.post("/api/posts", authMiddleware, upload.single("media"), async (req, res) => {
   try {
     const { content, platforms, scheduledFor, tags, category, caption } = req.body;
 
@@ -1983,117 +2209,6 @@ app.get('/api/dashboard/:businessId', async (req, res) => {
         });
     }
 });
-app.post("/api/post/:postId/like", async (req, res) => {
-  try {
-    const { userId } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
-    }
-
-    const post = await Post.findById(req.params.postId);
-    if (!post) {
-      return res.status(404).json({ message: "Post not found" });
-    }
-
-    const userObjectId = new mongoose.Types.ObjectId(userId);
-
-    // Ensure likesList exists
-    if (!Array.isArray(post.likesList)) {
-      post.likesList = [];
-    }
-
-    // Check if user already liked
-    const alreadyLiked = post.likesList.some(
-      (like) => like.userId.toString() === userObjectId.toString()
-    );
-
-    if (alreadyLiked) {
-      // REMOVE LIKE
-      post.likesList = post.likesList.filter(
-        (like) => like.userId.toString() !== userObjectId.toString()
-      );
-    } else {
-      // ADD LIKE
-      post.likesList.push({ userId: userObjectId });
-    }
-
-    // Update like count
-    post.likesCount = post.likesList.length;
-
-    await post.save();
-
-    // 🔥 Update Engagement Rate Instantly
-    await updateBusinessEngagementRate(post.business);
-
-    return res.json({
-      success: true,
-      message: alreadyLiked ? "Post unliked" : "Post liked",
-      likesCount: post.likesCount,
-      isLiked: !alreadyLiked
-    });
-
-  } catch (error) {
-    console.error("Like error:", error);
-    return res.status(500).json({ message: "Server error" });
-  }
-});
-
-app.post("/api/post/:postId/like", async (req, res) => {
-  try {
-    const { userId } = req.body;
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
-    }
-
-    const post = await Post.findById(req.params.postId);
-    if (!post) return res.status(404).json({ message: "Post not found" });
-
-    const userObjectId = new mongoose.Types.ObjectId(userId);
-
-    // Ensure likesList exists
-    if (!Array.isArray(post.likesList)) post.likesList = [];
-
-    // ---- NORMALIZE likesList ----
-    post.likesList = post.likesList.map((like) => {
-      if (like?.userId) return like;  // already in correct format
-      return { userId: like };        // convert old format
-    });
-
-    // Check if user already liked
-    const alreadyLiked = post.likesList.some(
-      (like) => like.userId.toString() === userObjectId.toString()
-    );
-
-    if (alreadyLiked) {
-      // REMOVE LIKE
-      post.likesList = post.likesList.filter(
-        (like) => like.userId.toString() !== userObjectId.toString()
-      );
-    } else {
-      // ADD LIKE
-      post.likesList.push({ userId: userObjectId });
-    }
-
-    // Update like count
-    post.likesCount = post.likesList.length;
-    await post.save();
-
-    // Update Engagement Rate
-    await updateBusinessEngagementRate(post.business);
-
-    return res.json({
-      success: true,
-      isLiked: !alreadyLiked,
-      likesCount: post.likesCount,
-    });
-
-  } catch (error) {
-    console.error("Like error:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
 
 app.post("/api/follow/:businessId", async (req, res) => {
   const { businessId } = req.params;
@@ -2128,80 +2243,465 @@ app.post("/api/follow/:businessId", async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
+// 1. Fixed Like Status Check Route
 app.get("/api/post/:postId/like-status/:userId", async (req, res) => {
-  try {
-    const { postId, userId } = req.params;
-    const post = await Post.findById(postId);
+  try {
+    const { postId, userId } = req.params;
+    
+    console.log('Checking like status:', { postId, userId });
+    
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(postId) || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Invalid post ID or user ID format" 
+      });
+    }
 
-    if (!post) {
-      return res.status(404).json({ message: "Post not found" });
-    }
+    const post = await Post.findById(postId).select('likesList likesCount');
+    
+    if (!post) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Post not found" 
+      });
+    }
 
-    const userObjectId = new mongoose.Types.ObjectId(userId);
-    const isLiked = post.likesList?.some(likeId => likeId.equals(userObjectId)) || false;
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    
+    // Check if user exists in likesList
+    const isLiked = post.likesList.some(like => 
+      like.userId && like.userId.toString() === userObjectId.toString()
+    );
 
-    res.json({ isLiked });
-  } catch (err) {
-    console.error("Like status error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
+    console.log('Like status result:', { 
+      postId, 
+      userId, 
+      isLiked, 
+      totalLikes: post.likesList.length,
+      likesCount: post.likesCount 
+    });
+
+    res.json({ 
+      success: true,
+      isLiked,
+      likesCount: post.likesCount || post.likesList.length
+    });
+    
+  } catch (err) {
+    console.error("Like status error:", err);
+    res.status(500).json({ 
+      success: false,
+      message: "Server error checking like status",
+      error: err.message 
+    });
+  }
 });
+
+// 2. Fixed Get Comments Route
 app.get("/api/post/:postId/comments", async (req, res) => {
-  try {
-    const post = await Post.findById(req.params.postId)
-      .populate('commentsList.userId', 'name email') // Populate user details in comments
-      .select('commentsList');
+  try {
+    const { postId } = req.params;
+    
+    console.log('Fetching comments for post:', postId);
+    
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid post ID format" 
+      });
+    }
 
-    if (!post) {
-      return res.status(404).json({ message: "Post not found" });
-    }
+    const post = await Post.findById(postId)
+      .populate('commentsList.userId', 'firstName lastName email avatar username')
+      .select('commentsList commentsCount');
 
-    res.json({ 
-      success: true, 
-      comments: post.commentsList || [] 
-    });
-  } catch (err) {
-    console.error("Get comments error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
+    if (!post) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Post not found" 
+      });
+    }
+
+    console.log('Found comments:', post.commentsList.length);
+    
+    res.json({ 
+      success: true, 
+      comments: post.commentsList || [],
+      commentsCount: post.commentsCount || post.commentsList.length
+    });
+    
+  } catch (err) {
+    console.error("Get comments error:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error fetching comments",
+      error: err.message 
+    });
+  }
 });
-// Get all users who liked a specific post
+
+// 3. Fixed Get Users Who Liked a Post
 app.get("/api/post/:postId/likes", async (req, res) => {
-  try {
-    const { postId } = req.params;
+  try {
+    const { postId } = req.params;
 
-    if (!postId) {
-      return res.status(400).json({ success: false, message: "Post ID is required" });
-    }
+    console.log('Fetching likes for post:', postId);
+    
+    if (!postId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Post ID is required" 
+      });
+    }
+    
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid post ID format" 
+      });
+    }
 
-    // Find the post and populate likesList.userId
-    const post = await Post.findById(postId)
-      .populate({
-        path: "likesList.userId",
-        select: "name email" // pick the fields you want
-      })
-      .exec();
+    // Find the post and populate likesList.userId
+    const post = await Post.findById(postId)
+      .populate({
+        path: "likesList.userId",
+        select: "firstName lastName email avatar username",
+        model: 'Client' // Important: specify the model since it's Client not User
+      })
+      .exec();
 
-    if (!post) {
-      return res.status(404).json({ success: false, message: "Post not found" });
-    }
+    if (!post) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Post not found" 
+      });
+    }
 
-    // Map to get an array of users who liked the post
-    const likedUsers = post.likesList.map(like => like.userId);
+    // Extract userIds from likesList
+    const likedUsers = post.likesList
+      .filter(like => like.userId) // Filter out any null/undefined
+      .map(like => like.userId);
 
-    res.status(200).json({
-      success: true,
-      totalLikes: likedUsers.length,
-      users: likedUsers
-    });
+    console.log('Found liked users:', likedUsers.length);
+    
+    res.status(200).json({
+      success: true,
+      totalLikes: likedUsers.length,
+      likesCount: post.likesCount || likedUsers.length,
+      users: likedUsers
+    });
 
-  } catch (error) {
-    console.error("Error fetching liked users:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while fetching liked users"
-    });
-  }
+  } catch (error) {
+    console.error("Error fetching liked users:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching liked users",
+      error: error.message
+    });
+  }
+});
+
+// 4. IMPORTANT: Fixed Like/Unlike Route (matches your schema)
+app.post("/api/post/:postId/like", async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const { postId } = req.params;
+
+    console.log('Like/Unlike request:', { postId, userId });
+
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "User ID is required" 
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(postId) || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid post ID or user ID format" 
+      });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Post not found" 
+      });
+    }
+
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    // Initialize likesList if it doesn't exist
+    if (!Array.isArray(post.likesList)) {
+      post.likesList = [];
+    }
+
+    // Check if user already liked
+    const existingLikeIndex = post.likesList.findIndex(
+      like => like.userId && like.userId.toString() === userObjectId.toString()
+    );
+
+    let newLikeStatus;
+    let action;
+    
+    if (existingLikeIndex !== -1) {
+      // REMOVE LIKE
+      post.likesList.splice(existingLikeIndex, 1);
+      newLikeStatus = false;
+      action = "unliked";
+    } else {
+      // ADD LIKE
+      post.likesList.push({ 
+        userId: userObjectId 
+      });
+      newLikeStatus = true;
+      action = "liked";
+    }
+
+    // Update like count
+    post.likesCount = post.likesList.length;
+    post.updatedAt = new Date();
+
+    await post.save();
+
+    console.log('Like update successful:', {
+      postId,
+      userId,
+      action,
+      likesCount: post.likesCount,
+      isLiked: newLikeStatus
+    });
+
+    // Update Engagement Rate
+    if (post.business) {
+      try {
+        await updateBusinessEngagementRate(post.business);
+      } catch (engagementError) {
+        console.error("Engagement rate update error:", engagementError);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `Post ${action}`,
+      likesCount: post.likesCount,
+      isLiked: newLikeStatus
+    });
+
+  } catch (error) {
+    console.error("Like/Unlike error:", error);
+    return res.status(500).json({ 
+      success: false,
+      message: "Server error while processing like",
+      error: error.message
+    });
+  }
+});
+
+// 5. Fixed Add Comment Route
+app.post("/api/post/:postId/comment", async (req, res) => {
+  try {
+    const { text, userId } = req.body;
+    const { postId } = req.params;
+
+    console.log('Comment request:', { postId, userId, text });
+
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "User ID is required" 
+      });
+    }
+
+    if (!text || text.trim() === "") {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Comment text is required" 
+      });
+    }
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(postId) || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid post ID or user ID format" 
+      });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Post not found" 
+      });
+    }
+
+    // Initialize commentsList if it doesn't exist
+    if (!Array.isArray(post.commentsList)) {
+      post.commentsList = [];
+    }
+
+    // Add new comment
+    const newComment = {
+      userId: new mongoose.Types.ObjectId(userId),
+      text: text.trim(),
+      date: new Date()
+    };
+
+    post.commentsList.push(newComment);
+    post.commentsCount = post.commentsList.length;
+    post.updatedAt = new Date();
+
+    await post.save();
+
+    // Populate user information for the response
+    const Client = mongoose.model('Client');
+    const populatedComment = {
+      ...newComment,
+      userId: await Client.findById(userId).select('firstName lastName email avatar username')
+    };
+
+    console.log('Comment added successfully:', {
+      postId,
+      commentCount: post.commentsList.length,
+      commentsCount: post.commentsCount
+    });
+
+    // Update engagement rate
+    if (post.business) {
+      try {
+        await updateBusinessEngagementRate(post.business);
+      } catch (engagementError) {
+        console.error("Engagement rate update error:", engagementError);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: "Comment added successfully",
+      comment: populatedComment,
+      commentsCount: post.commentsCount
+    });
+
+  } catch (error) {
+    console.error("Comment error:", error);
+    return res.status(500).json({ 
+      success: false,
+      message: "Server error while adding comment",
+      error: error.message
+    });
+  }
+});
+
+// 6. Helper: Debug Post Structure
+app.get("/api/post/:postId/debug", async (req, res) => {
+  try {
+    const { postId } = req.params;
+    
+    const post = await Post.findById(postId).lean();
+    
+    if (!post) {
+      return res.json({ 
+        success: false, 
+        message: "Post not found" 
+      });
+    }
+    
+    res.json({
+      success: true,
+      postStructure: {
+        _id: post._id,
+        business: post.business,
+        user: post.user,
+        likesListExists: !!post.likesList,
+        likesListLength: post.likesList ? post.likesList.length : 0,
+        likesCount: post.likesCount,
+        commentsListExists: !!post.commentsList,
+        commentsListLength: post.commentsList ? post.commentsList.length : 0,
+        commentsCount: post.commentsCount,
+        mediaUrl: post.mediaUrl,
+        content: post.content ? post.content.substring(0, 50) + "..." : null,
+        allFields: Object.keys(post)
+      }
+    });
+    
+  } catch (error) {
+    console.error("Debug error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+// 4. ADD THIS: Get Post Details with Like/Count Information
+app.get("/api/post/:postId/details", async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { userId } = req.query; // Optional: check if specific user liked it
+    
+    console.log('Getting post details:', { postId, userId });
+    
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid post ID format" 
+      });
+    }
+
+    const post = await Post.findById(postId)
+      .populate('business', 'businessName logoUrl')
+      .populate('comments.userId', 'firstName lastName avatar')
+      .populate('commentsList.userId', 'firstName lastName avatar')
+      .lean(); // Convert to plain object
+
+    if (!post) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Post not found" 
+      });
+    }
+
+    // Handle both field names
+    const likesArray = post.likesList || post.likes || [];
+    const commentsArray = post.comments || post.commentsList || [];
+    
+    let isLiked = false;
+    if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+      const userObjectId = new mongoose.Types.ObjectId(userId);
+      isLiked = likesArray.some(like => 
+        like && like.userId && like.userId.toString() === userObjectId.toString()
+      );
+    }
+
+    const response = {
+      success: true,
+      post: {
+        ...post,
+        likesCount: post.likesCount || likesArray.length,
+        commentsCount: post.commentsCount || commentsArray.length,
+        isLiked: isLiked,
+        likes: likesArray,
+        comments: commentsArray
+      }
+    };
+
+    console.log('Post details response:', {
+      postId,
+      likesCount: response.post.likesCount,
+      commentsCount: response.post.commentsCount,
+      isLiked: response.post.isLiked
+    });
+
+    res.json(response);
+    
+  } catch (error) {
+    console.error("Get post details error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error fetching post details",
+      error: error.message
+    });
+  }
 });
 // Upload profile image
 app.post("/api/user/:userId/upload-image", async (req, res) => {

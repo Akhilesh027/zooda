@@ -64,6 +64,7 @@ interface Post {
   shares?: number;
   likesList?: string[];
   commentsList?: Comment[];
+  likesCount?: number;
   media?: Array<{
     url: string;
     type: string;
@@ -2501,7 +2502,6 @@ const comstylesElement = document.createElement("style");
 comstylesElement.innerText = comstyles;
 document.head.appendChild(comstylesElement);
 
-// ---------------- MOBILE MENU ----------------
 interface MobileMenuProps {
   isOpen: boolean;
   onClose: () => void;
@@ -2635,7 +2635,6 @@ const MobileMenu = ({
   );
 };
 
-// ---------------- BANNER COMPONENT ----------------
 const Banner = () => {
   return (
     <section className="banner">
@@ -2648,13 +2647,10 @@ const Banner = () => {
     </section>
   );
 };
-
-
-
 interface AllPostsPageProps {
   onSelectPost: (post: Post) => void;
   user?: User;
-  onLoginRequest?: () => void; // Add this prop for login navigation
+  onLoginRequest?: () => void;
 }
 
 const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps) => {
@@ -2662,7 +2658,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"Following" | "Unfollowing">("Following");
-  const [showLoginModal, setShowLoginModal] = useState(false); // Add state for login modal
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const fetchPosts = useCallback(async () => {
     if (!user?._id) {
@@ -2680,8 +2676,11 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
           ? `https://api.zooda.in/api/posts/following/${user._id}`
           : `https://api.zooda.in/api/posts/unfollowed/${user._id}`;
 
+      console.log('Fetching posts from:', endpoint);
       const response = await axios.get(endpoint);
       const data = response.data;
+
+      console.log('Posts API response:', data);
 
       if (data.success && Array.isArray(data.posts)) {
         const processed = await Promise.all(
@@ -2739,6 +2738,10 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
               }
             }
 
+            // Get counts from post data - use the correct field names from your schema
+            const likesCount = post.likesCount || 0;
+            const commentsCount = post.commentsCount || 0;
+
             // Check like status for each post
             let isLiked = false;
             if (user?._id && post._id) {
@@ -2746,9 +2749,14 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
                 const likeResponse = await axios.get(
                   `https://api.zooda.in/api/post/${post._id}/like-status/${user._id}`
                 );
-                isLiked = likeResponse.data.isLiked;
+                console.log('Like status response for post', post._id, ':', likeResponse.data);
+                
+                if (likeResponse.data.success !== false) {
+                  isLiked = likeResponse.data.isLiked || false;
+                }
               } catch (err) {
-                console.error("Error checking like status:", err);
+                console.error("Error checking like status for post", post._id, ":", err);
+                isLiked = false;
               }
             }
 
@@ -2763,12 +2771,16 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
                 username: "unknown_business",
                 logoUrl: null
               },
-              likes: post.likesCount || post.likes || 0,
-              comments: post.commentsCount || post.comments || 0,
-              isLiked: isLiked
+              likesCount: likesCount,  // Use likesCount from schema
+              commentsCount: commentsCount,  // Use commentsCount from schema
+              isLiked: isLiked,
+              // Add these for backward compatibility if needed
+              likes: likesCount,
+              comments: commentsCount
             };
           })
         );
+        console.log('Processed posts:', processed);
         setPosts(processed);
       } else {
         throw new Error("Invalid API response format");
@@ -2781,15 +2793,13 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
     }
   }, [user?._id, activeTab]);
 
-  // Handle login request - open modal
+  // Handle login request
   const handleLoginRequest = () => {
     setShowLoginModal(true);
   };
 
-  // Handle successful login
   const handleLoginSuccess = (userData: User) => {
     setShowLoginModal(false);
-    // You might want to refresh posts after login
     if (userData._id) {
       fetchPosts();
     }
@@ -2797,39 +2807,87 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
 
   const handleLike = async (postId: string, postIndex: number) => {
     if (!user?._id) {
-      return; // Will be handled in PostGridItem with login prompt
+      return;
     }
 
     try {
+      console.log('Liking post:', postId, 'by user:', user._id);
+      
+      // Create optimistic update first
       const updatedPosts = [...posts];
       const post = updatedPosts[postIndex];
       const newLikeStatus = !post.isLiked;
-      const newLikesCount = newLikeStatus ? post.likes + 1 : post.likes - 1;
+      const newLikesCount = newLikeStatus ? (post.likesCount || 0) + 1 : (post.likesCount || 0) - 1;
 
       // Optimistic update
       updatedPosts[postIndex] = {
         ...post,
         isLiked: newLikeStatus,
-        likes: newLikesCount
+        likesCount: newLikesCount,
+        likes: newLikesCount // Keep for backward compatibility
       };
       setPosts(updatedPosts);
 
-      await axios.post(`https://api.zooda.in/api/post/${postId}/like`, {
-        userId: user._id,
-      });
+      // Make API call
+      const response = await axios.post(
+        `https://api.zooda.in/api/post/${postId}/like`,
+        {
+          userId: user._id,
+        }
+      );
+
+      console.log('Like API response:', response.data);
+
+      // Verify the response matches our optimistic update
+      if (response.data.success) {
+        // Update with actual server response
+        const finalUpdatedPosts = [...posts];
+        finalUpdatedPosts[postIndex] = {
+          ...finalUpdatedPosts[postIndex],
+          isLiked: response.data.isLiked,
+          likesCount: response.data.likesCount,
+          likes: response.data.likesCount // Keep for backward compatibility
+        };
+        setPosts(finalUpdatedPosts);
+        
+        console.log('Post updated with server response:', finalUpdatedPosts[postIndex]);
+      } else {
+        // Server returned error, revert optimistic update
+        const revertedPosts = [...posts];
+        revertedPosts[postIndex] = {
+          ...revertedPosts[postIndex],
+          isLiked: !revertedPosts[postIndex].isLiked,
+          likesCount: revertedPosts[postIndex].isLiked 
+            ? (revertedPosts[postIndex].likesCount || 0) - 1 
+            : (revertedPosts[postIndex].likesCount || 0) + 1,
+          likes: revertedPosts[postIndex].isLiked 
+            ? (revertedPosts[postIndex].likes || 0) - 1 
+            : (revertedPosts[postIndex].likes || 0) + 1
+        };
+        setPosts(revertedPosts);
+        
+        console.error("Server returned error for like:", response.data.message);
+        alert(response.data.message || "Failed to like post");
+      }
 
     } catch (err: any) {
-      // Revert on error
+      console.error("Error liking post:", err);
+      
+      // Revert optimistic update on error
       const revertedPosts = [...posts];
+      const currentPost = revertedPosts[postIndex];
+      const currentLikesCount = currentPost.likesCount || 0;
+      const currentIsLiked = currentPost.isLiked;
+      
       revertedPosts[postIndex] = {
-        ...revertedPosts[postIndex],
-        isLiked: !revertedPosts[postIndex].isLiked,
-        likes: revertedPosts[postIndex].isLiked 
-          ? revertedPosts[postIndex].likes - 1 
-          : revertedPosts[postIndex].likes + 1
+        ...currentPost,
+        isLiked: !currentIsLiked,
+        likesCount: currentIsLiked ? currentLikesCount - 1 : currentLikesCount + 1,
+        likes: currentIsLiked ? currentLikesCount - 1 : currentLikesCount + 1
       };
       setPosts(revertedPosts);
-      console.error("Error liking post:", err);
+      
+      alert(err.response?.data?.message || "Failed to like post");
     }
   };
 
@@ -2838,9 +2896,13 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
       return { success: false, error: "Please login to comment" };
     }
 
-    if (!commentText.trim()) return { success: false, error: "Comment cannot be empty" };
+    if (!commentText.trim()) {
+      return { success: false, error: "Comment cannot be empty" };
+    }
 
     try {
+      console.log('Sending comment for post:', postId, 'by user:', user._id);
+      
       const response = await axios.post(
         `https://api.zooda.in/api/post/${postId}/comment`,
         {
@@ -2849,18 +2911,35 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
         }
       );
 
-      // Update comment count
-      const updatedPosts = [...posts];
-      updatedPosts[postIndex] = {
-        ...updatedPosts[postIndex],
-        comments: response.data.commentsCount
-      };
-      setPosts(updatedPosts);
+      console.log('Comment API response:', response.data);
 
-      return { success: true };
+      if (response.data.success) {
+        // Update comment count
+        const updatedPosts = [...posts];
+        updatedPosts[postIndex] = {
+          ...updatedPosts[postIndex],
+          commentsCount: response.data.commentsCount,
+          comments: response.data.commentsCount // Keep for backward compatibility
+        };
+        setPosts(updatedPosts);
+
+        return { 
+          success: true, 
+          comment: response.data.comment,
+          commentsCount: response.data.commentsCount
+        };
+      } else {
+        return { 
+          success: false, 
+          error: response.data.message || "Failed to post comment" 
+        };
+      }
     } catch (err: any) {
       console.error("Error commenting:", err);
-      return { success: false, error: err.message };
+      return { 
+        success: false, 
+        error: err.response?.data?.message || err.message || "Failed to post comment" 
+      };
     }
   };
 
@@ -2876,11 +2955,14 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
         console.log('Share cancelled');
       }
     } else {
-      // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href);
       alert('Link copied to clipboard!');
     }
   };
+
+  const refreshPosts = useCallback(() => {
+    fetchPosts();
+  }, [fetchPosts]);
 
   useEffect(() => {
     fetchPosts();
@@ -2917,16 +2999,11 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
           </div>
         </div>
 
-        {/* Login Modal */}
         <LoginModal
           isOpen={showLoginModal}
           onClose={() => setShowLoginModal(false)}
           onLogin={handleLoginSuccess}
-          onOpenRegister={() => {
-            // If you have a register modal, handle it here
-            setShowLoginModal(false);
-            // You can add your register modal opening logic here
-          }}
+          onOpenRegister={() => setShowLoginModal(false)}
         />
       </>
     );
@@ -2945,7 +3022,7 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
     return (
       <div className="app-center app-error">
         <p>⚠️ {error}</p>
-        <button onClick={fetchPosts} className="retry-btn">
+        <button onClick={refreshPosts} className="retry-btn">
           Retry
         </button>
       </div>
@@ -2969,6 +3046,21 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
               Unfollowing
             </button>
           </div>
+          <button 
+            onClick={refreshPosts} 
+            className="refresh-btn"
+            style={{
+              position: 'absolute',
+              right: '20px',
+              top: '10px',
+              background: 'transparent',
+              border: 'none',
+              color: '#0095f6',
+              cursor: 'pointer'
+            }}
+          >
+            <span className="material-icons">refresh</span>
+          </button>
         </div>
 
         {posts.length === 0 ? (
@@ -2986,22 +3078,18 @@ const AllPostsPage = ({ onSelectPost, user, onLoginRequest }: AllPostsPageProps)
                 onShare={handleShare}
                 user={user}
                 onLoginRequest={handleLoginRequest}
+                onRefreshPosts={refreshPosts}
               />
             ))}
           </div>
         )}
       </main>
 
-      {/* Login Modal */}
       <LoginModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
         onLogin={handleLoginSuccess}
-        onOpenRegister={() => {
-          // If you have a register modal, handle it here
-          setShowLoginModal(false);
-          // You can add your register modal opening logic here
-        }}
+        onOpenRegister={() => setShowLoginModal(false)}
       />
     </>
   );
@@ -3016,6 +3104,7 @@ interface PostGridItemProps {
   onShare: (post: Post) => void;
   user?: User;
   onLoginRequest?: () => void;
+  onRefreshPosts?: () => void;
 }
 
 const PostGridItem = ({ 
@@ -3026,7 +3115,8 @@ const PostGridItem = ({
   onComment,
   onShare, 
   user,
-  onLoginRequest
+  onLoginRequest,
+  onRefreshPosts
 }: PostGridItemProps) => {
   const companyName = post.company?.businessName || post.company?.name || "Business Name";
   const companyUsername = post.company?.username || companyName.toLowerCase().replace(/[\s.]/g, "_");
@@ -3036,6 +3126,7 @@ const PostGridItem = ({
   const [postComments, setPostComments] = useState<Comment[]>([]);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
 
   const formattedDate = new Date(
     post.createdAt || post.date
@@ -3052,13 +3143,24 @@ const PostGridItem = ({
     }
 
     if (!showComments && post._id) {
+      setIsLoadingComments(true);
       try {
+        console.log('Fetching comments for post:', post._id);
         const response = await axios.get(
           `https://api.zooda.in/api/post/${post._id}/comments`
         );
-        setPostComments(response.data.comments || []);
+        console.log('Comments response:', response.data);
+        
+        if (response.data.success !== false) {
+          setPostComments(response.data.comments || []);
+        } else {
+          setActionError(response.data.message || "Failed to load comments");
+        }
       } catch (err) {
         console.error("Error loading comments:", err);
+        setActionError("Failed to load comments");
+      } finally {
+        setIsLoadingComments(false);
       }
     }
     setShowComments(!showComments);
@@ -3084,11 +3186,22 @@ const PostGridItem = ({
       const result = await onComment(post._id, postIndex, commentText);
       if (result.success) {
         setCommentText("");
-        // Refresh comments
-        const response = await axios.get(
-          `https://api.zooda.in/api/post/${post._id}/comments`
-        );
-        setPostComments(response.data.comments || []);
+        // Refresh comments after successful comment
+        try {
+          const response = await axios.get(
+            `https://api.zooda.in/api/post/${post._id}/comments`
+          );
+          if (response.data.success !== false) {
+            setPostComments(response.data.comments || []);
+          }
+        } catch (err) {
+          console.error("Error refreshing comments:", err);
+        }
+        
+        // Refresh posts to update comment count globally
+        if (onRefreshPosts) {
+          setTimeout(() => onRefreshPosts(), 500);
+        }
       } else if (result.error) {
         setActionError(result.error);
       }
@@ -3104,6 +3217,10 @@ const PostGridItem = ({
     onShare(post);
   };
 
+  // Use the correct field names from your schema
+  const likesCount = post.likesCount || 0;
+  const commentsCount = post.commentsCount || 0;
+
   return (
     <article className="post-grid-item">
       {/* Header with Business Info and Logo */}
@@ -3117,7 +3234,9 @@ const PostGridItem = ({
                 className="business-logo"
               />
             ) : (
-              companyName.charAt(0)
+              <div className="business-avatar-fallback">
+                {companyName.charAt(0)}
+              </div>
             )}
           </div>
           <div className="business-details">
@@ -3126,6 +3245,17 @@ const PostGridItem = ({
             </strong>
             <span className="business-username">@{companyUsername}</span>
           </div>
+        </div>
+        {/* Show stats in header */}
+        <div className="post-stats-header">
+          <span className="post-stat">
+            <span className="material-icons" style={{ fontSize: '16px', marginRight: '4px' }}>favorite</span>
+            {likesCount}
+          </span>
+          <span className="post-stat">
+            <span className="material-icons" style={{ fontSize: '16px', marginRight: '4px' }}>chat</span>
+            {commentsCount}
+          </span>
         </div>
       </div>
 
@@ -3138,6 +3268,10 @@ const PostGridItem = ({
           src={post.imageUrl}
           alt={post.content || "Post image"}
           className="post-image"
+          onError={(e) => {
+            console.error('Image failed to load:', post.imageUrl);
+            e.currentTarget.src = `https://picsum.photos/600/400?random=${postIndex}`;
+          }}
         />
       </div>
 
@@ -3162,6 +3296,7 @@ const PostGridItem = ({
           <button
             className={`like-btn ${post.isLiked ? 'liked' : ''}`}
             onClick={handleLikeWithLoginCheck}
+            title={post.isLiked ? "Unlike" : "Like"}
           >
             <span className="material-icons">
               {post.isLiked ? "favorite" : "favorite_border"}
@@ -3170,12 +3305,14 @@ const PostGridItem = ({
           <button 
             className="comment-btn"
             onClick={toggleComments}
+            title="Comment"
           >
             <span className="material-icons">chat_bubble_outline</span>
           </button>
           <button 
             className="share-btn"
             onClick={handleShareWithLoginCheck}
+            title="Share"
           >
             <span className="material-icons">send</span>
           </button>
@@ -3184,9 +3321,9 @@ const PostGridItem = ({
 
       {/* Post Stats and Content */}
       <div className="post-content">
-        {post.likes > 0 && (
+        {likesCount > 0 && (
           <div className="post-stats">
-            <strong>{post.likes.toLocaleString()} likes</strong>
+            <strong>{likesCount.toLocaleString()} likes</strong>
           </div>
         )}
 
@@ -3195,12 +3332,13 @@ const PostGridItem = ({
           <span className="caption-text">{post.content || post.caption}</span>
         </div>
 
-        {post.comments > 0 && (
+        {commentsCount > 0 && (
           <button 
             className="view-comments"
             onClick={toggleComments}
+            disabled={isLoadingComments}
           >
-            View all {post.comments} comments
+            {isLoadingComments ? "Loading comments..." : `View all ${commentsCount} comments`}
           </button>
         )}
 
@@ -3221,33 +3359,43 @@ const PostGridItem = ({
               </div>
             ) : (
               <>
-                {postComments.map((comment, index) => (
-                  <div key={index} className="comment-item">
-                    <strong className="comment-username">
-                      {comment.userId?.name || 'User'}
-                    </strong>
-                    <span className="comment-text">{comment.text}</span>
-                  </div>
-                ))}
-                
-                {/* Comment Input */}
-                <form onSubmit={handleCommentSubmit} className="comment-form">
-                  <input
-                    type="text"
-                    placeholder="Add a comment..."
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    className="comment-input"
-                    disabled={isSubmittingComment || !user?._id}
-                  />
-                  <button
-                    type="submit"
-                    className="comment-submit-btn"
-                    disabled={!commentText.trim() || isSubmittingComment || !user?._id}
-                  >
-                    {isSubmittingComment ? 'Posting...' : 'Post'}
-                  </button>
-                </form>
+                {isLoadingComments ? (
+                  <div className="loading-comments">Loading comments...</div>
+                ) : (
+                  <>
+                    {postComments.length === 0 ? (
+                      <div className="no-comments">No comments yet</div>
+                    ) : (
+                      postComments.map((comment, index) => (
+                        <div key={index} className="comment-item">
+                          <strong className="comment-username">
+                            {comment.userId?.name || 'User'}
+                          </strong>
+                          <span className="comment-text">{comment.text}</span>
+                        </div>
+                      ))
+                    )}
+                    
+                    {/* Comment Input */}
+                    <form onSubmit={handleCommentSubmit} className="comment-form">
+                      <input
+                        type="text"
+                        placeholder="Add a comment..."
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                        className="comment-input"
+                        disabled={isSubmittingComment || !user?._id}
+                      />
+                      <button
+                        type="submit"
+                        className="comment-submit-btn"
+                        disabled={!commentText.trim() || isSubmittingComment || !user?._id}
+                      >
+                        {isSubmittingComment ? 'Posting...' : 'Post'}
+                      </button>
+                    </form>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -3258,6 +3406,9 @@ const PostGridItem = ({
     </article>
   );
 };
+
+
+
 const styles = `
 /* Login Prompt Styles */
 .login-prompt {
@@ -3789,7 +3940,6 @@ const PostDetailPage = ({ data, onBack, user, onLoginRequest }: PostDetailPagePr
   );
 };
 // ---------------- PROFILE PAGE ----------------
-
 interface ProfilePageProps {
   company: Company;
   onSelectPost: (post: Post, company: Company) => void;
@@ -3964,10 +4114,12 @@ const ProfilePage = ({
   const handlePostImageClick = (post: Post) => {
     setSelectedPost(post);
     setShowPostDetail(true);
+    setShowPostsGrid(true);
   };
 
   const handleClosePostDetail = () => {
     setShowPostDetail(false);
+    setShowPostsGrid(false);
     setSelectedPost(null);
   };
 
@@ -4067,54 +4219,140 @@ const ProfilePage = ({
   return (
     <div className="profile-page">
       <main className="profile-content">
-        {/* -------------------- HEADER -------------------- */}
-        <section className="profile-header">
-          <img src={company.logoUrl} className="profile-logo" />
+        {/* -------------------- HEADER (MODIFIED STRUCTURE & INLINE STYLES) -------------------- */}
+   <section
+  style={{
+    display: "flex",
+    flexDirection: "column",
+    width: "100%",
+    gap: "15px",
 
-          <div className="profile-header-content">
-            <h2>{company.name}</h2>
-            <p>{company.description || "No description available."}</p>
+  }}
+>
+  {/* Top Row: Logo | Company Name | Actions */}
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      width: "100%",
+    }}
+  >
+    <img
+      src={company.logoUrl}
+      style={{
+        width: "80px",
+        height: "80px",
+        borderRadius: "50%",
+        objectFit: "cover",
+      }}
+    />
 
-            <div className="profile-stats-grid">
-              <div className="stat-item">
-                <span className="stat-number">{posts.length}</span>
-                <span className="stat-label">Posts</span>
-              </div>
+    <h2
+      style={{
+        flex: 1,
+        textAlign: "center",
+        fontSize: "1rem",
+        margin: "0",
+        fontWeight: "600",
+      }}
+    >
+      {company.name}
+    </h2>
 
-              <div className="stat-item">
-                <span className="stat-number">{products.length}</span>
-                <span className="stat-label">Products</span>
-              </div>
+    {/* ACTIONS COLUMN */}
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",     // 🔥 Actions stacked
+        gap: "8px",
+        alignItems: "flex-end",      // aligns buttons right
+      }}
+    >
+     
+<button
+        onClick={handleFollow}
+        style={{
+          padding: "8px 15px",
+          borderRadius: "8px",
+          border: "none",
+          background: isFollowing ? "green" : "green",
+          color: "white",
+          cursor: "pointer",
+          fontWeight: "600",
+          width: "110px",
+        }}
+      >
+         <a
+        href={company.siteUrl}
+        target="_blank"
+       
+      >
+        Visit Site
+      </a>
+      </button>
+      <button
+        onClick={handleFollow}
+        style={{
+          padding: "8px 15px",
+          borderRadius: "8px",
+          border: "none",
+          background: isFollowing ? "green" : "green",
+          color: "white",
+          cursor: "pointer",
+          fontWeight: "600",
+          width: "110px",
+        }}
+      >
+        {isFollowing ? "Unfollow" : "Follow"}
+      </button>
+    </div>
+  </div>
 
-              <div className="stat-item">
-                <span className="stat-number">{followers}</span>
-                <span className="stat-label">Followers</span>
-              </div>
+  {/* Description */}
+  <p
+    style={{
+      margin: "0",
+      color: "#555",
+      fontSize: ".95rem",
+    }}
+  >
+    {company.description || "No description available."}
+  </p>
 
-              {company.engagementRate > 0 && (
-                <div className="stat-item">
-                  <span className="stat-number">
-                    {company.engagementRate}%
-                  </span>
-                  <span className="stat-label">Engagement</span>
-                </div>
-              )}
-            </div>
-          </div>
+  {/* Stats */}
+  <div
+    style={{
+      width: "100%",
+      display: "flex",
+      justifyContent: "space-around",
+      padding: "10px 0",
+      borderTop: "1px solid #eee",
+    }}
+  >
+    <div style={{ textAlign: "center" }}>
+      <h4 style={{ margin: 0, fontSize: "1.2rem" }}>{posts.length}</h4>
+      <span style={{ fontSize: ".85rem", color: "#888" }}>Posts</span>
+    </div>
 
-          <div className="profile-header-actions">
-            <a href={company.siteUrl} target="_blank" className="btn btn-outline">
-              Visit site
-            </a>
+    <div style={{ textAlign: "center" }}>
+      <h4 style={{ margin: 0, fontSize: "1.2rem" }}>{products.length}</h4>
+      <span style={{ fontSize: ".85rem", color: "#888" }}>Products</span>
+    </div>
 
-            <button
-              className={`btn btn-solid ${isFollowing ? "following" : ""}`}
-              onClick={handleFollow}
-            >
-              {isFollowing ? "Unfollow" : "Follow"}
-            </button>
-          </div>
-        </section>
+    <div style={{ textAlign: "center" }}>
+      <h4 style={{ margin: 0, fontSize: "1.2rem" }}>{followers}</h4>
+      <span style={{ fontSize: ".85rem", color: "#888" }}>Followers</span>
+    </div>
+
+    {company.engagementRate > 0 && (
+      <div style={{ textAlign: "center" }}>
+        <h4 style={{ margin: 0, fontSize: "1.2rem" }}>{company.engagementRate}%</h4>
+        <span style={{ fontSize: ".85rem", color: "#888" }}>Engagement</span>
+      </div>
+    )}
+  </div>
+</section>
 
         {/* -------------------- TABS -------------------- */}
         <nav className="tabs profile-tabs">
@@ -4134,8 +4372,8 @@ const ProfilePage = ({
         </nav>
 
         {/* ==============================================================
-            CONTENT AREA
-        ============================================================== */}
+             CONTENT AREA
+         ============================================================== */}
         {loading ? (
           <p>Loading...</p>
         ) : error ? (
@@ -4143,7 +4381,7 @@ const ProfilePage = ({
         ) : (
           <>
             {/* -------------------- POSTS TAB -------------------- */}
-            {activeTab === "Posts" && (
+            {activeTab === "Posts" && !showPostsGrid && (
               <>
                 <div className="post-tags">
                   {postCategories.map((category) => (
@@ -4245,14 +4483,41 @@ const ProfilePage = ({
                 </section>
               </>
             )}
+
+            {/* -------------------- POST DETAIL WITH PRODUCTS GRID -------------------- */}
+            {showPostsGrid && selectedPost && (
+              <div className="post-detail-with-products">
+                {/* Back Button */}
+                <div className="back-button-container">
+                  <button 
+                    className="back-button"
+                    onClick={handleClosePostDetail}
+                  >
+                    ← Back to Posts
+                  </button>
+                </div>
+
+                {/* Post Detail Section */}
+                <div className="post-detail-section">
+                  <PostGridItem
+                    post={selectedPost}
+                    postIndex={posts.findIndex(p => p._id === selectedPost._id)}
+                    onSelectPost={() => {}}
+                    onLike={handleLike}
+                    onComment={handleComment}
+                    onShare={handleShare}
+                    user={user}
+                    onLoginRequest={onLoginRequest}
+                  />
+                </div>
+              </div>
+            )}
           </>
         )}
       </main>
     </div>
   );
 };
-
-
 interface FooterProps {
   companyName?: string;
   logoUrl?: string;

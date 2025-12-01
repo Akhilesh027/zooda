@@ -3,6 +3,7 @@ import './App.css';
 
 const API_BASE = 'https://api.zooda.in/api';
 
+
 function App() {
   const [adminData, setAdminData] = useState({
     pendingBusinesses: [],
@@ -23,7 +24,17 @@ function App() {
   // Password protection states
   const [passwordInput, setPasswordInput] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
-  const ADMIN_PASSWORD = '224466'; // change this to your password
+  const [showPasswordSetup, setShowPasswordSetup] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Check if password is set on initial load
+  useEffect(() => {
+    const savedPassword = localStorage.getItem('adminPassword');
+    if (!savedPassword) {
+      setShowPasswordSetup(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (authenticated) {
@@ -31,15 +42,57 @@ function App() {
     }
   }, [authenticated]);
 
-  // -------------------- Password Check --------------------
+  // -------------------- Password Management --------------------
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
-    if (passwordInput === ADMIN_PASSWORD) {
+    const savedPassword = localStorage.getItem('adminPassword');
+    
+    if (passwordInput === savedPassword) {
       setAuthenticated(true);
+      setPasswordInput('');
     } else {
       alert('Incorrect password! Access denied.');
       setPasswordInput('');
     }
+  };
+
+  const handleSetPassword = (e) => {
+    e.preventDefault();
+    
+    if (newPassword.length < 6) {
+      alert('Password must be at least 6 characters long');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      alert('Passwords do not match!');
+      return;
+    }
+    
+    localStorage.setItem('adminPassword', newPassword);
+    alert('Password set successfully! Please log in with your new password.');
+    setShowPasswordSetup(false);
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+
+  const handleResetPassword = () => {
+    const currentPassword = localStorage.getItem('adminPassword');
+    const enteredPassword = prompt('Enter current password to reset:');
+    
+    if (enteredPassword === currentPassword) {
+      localStorage.removeItem('adminPassword');
+      setAuthenticated(false);
+      setShowPasswordSetup(true);
+      alert('Password reset successfully. Please set a new password.');
+    } else {
+      alert('Incorrect current password!');
+    }
+  };
+
+  const handleLogout = () => {
+    setAuthenticated(false);
+    setPasswordInput('');
   };
 
   // -------------------- API Request Helper --------------------
@@ -210,7 +263,8 @@ function App() {
     { id: 'approvals', name: 'Business Approvals', icon: 'fa-building' },
     { id: 'analytics', name: 'Business Analytics', icon: 'fa-chart-line' },
     { id: 'categories', name: 'Categories', icon: 'fa-tags' },
-    { id: 'businesses', name: 'All Businesses', icon: 'fa-store' }
+    { id: 'businesses', name: 'All Businesses', icon: 'fa-store' },
+    { id: 'settings', name: 'Admin Settings', icon: 'fa-cog' }
   ];
 
   const renderTabContent = () => {
@@ -271,26 +325,72 @@ function App() {
             fetchBusinessPromotions={fetchBusinessPromotions}
           />
         );
+      case 'settings':
+        return (
+          <AdminSettingsTab
+            onResetPassword={handleResetPassword}
+            onLogout={handleLogout}
+          />
+        );
       default:
         return <AdminOverviewTab stats={adminData.platformStats} />;
     }
   };
 
-  // -------------------- Render Password Form if Not Authenticated --------------------
+  // -------------------- Render Password Setup if No Password Set --------------------
+  if (showPasswordSetup) {
+    return (
+      <div className="password-prompt-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <form onSubmit={handleSetPassword} className="password-form" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '2rem', border: '1px solid #ccc', borderRadius: '8px', width: '400px' }}>
+          <h2>Set Admin Password</h2>
+          <p style={{ color: '#666', marginBottom: '1rem' }}>This is your first time accessing the admin panel. Please set a secure password.</p>
+          <input
+            type="password"
+            placeholder="Enter new password (min. 6 characters)"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+            minLength="6"
+            style={{ padding: '0.75rem', fontSize: '1rem', borderRadius: '4px', border: '1px solid #ddd' }}
+          />
+          <input
+            type="password"
+            placeholder="Confirm new password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            style={{ padding: '0.75rem', fontSize: '1rem', borderRadius: '4px', border: '1px solid #ddd' }}
+          />
+          <button type="submit" style={{ padding: '0.75rem', fontSize: '1rem', cursor: 'pointer', background: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px' }}>
+            Set Password
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  // -------------------- Render Login Form if Not Authenticated --------------------
   if (!authenticated) {
     return (
       <div className="password-prompt-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <form onSubmit={handlePasswordSubmit} className="password-form" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '2rem', border: '1px solid #ccc', borderRadius: '8px' }}>
-          <h2>Enter Admin Password</h2>
+        <form onSubmit={handlePasswordSubmit} className="password-form" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '2rem', border: '1px solid #ccc', borderRadius: '8px', width: '350px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+            <i className="fas fa-shield-alt" style={{ fontSize: '2.5rem', color: '#4CAF50', marginBottom: '0.5rem' }}></i>
+            <h2>Admin Login</h2>
+            <p style={{ color: '#666', fontSize: '0.9rem' }}>Enter your admin password</p>
+          </div>
           <input
             type="password"
-            placeholder="Password"
+            placeholder="Admin Password"
             value={passwordInput}
             onChange={(e) => setPasswordInput(e.target.value)}
             required
-            style={{ padding: '0.5rem', fontSize: '1rem' }}
+            style={{ padding: '0.75rem', fontSize: '1rem', borderRadius: '4px', border: '1px solid #ddd' }}
           />
-          <button type="submit" style={{ padding: '0.5rem', fontSize: '1rem', cursor: 'pointer' }}>Submit</button>
+          <button type="submit" style={{ padding: '0.75rem', fontSize: '1rem', cursor: 'pointer', background: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px' }}>
+            Login
+          </button>
+         
         </form>
       </div>
     );
@@ -376,6 +476,11 @@ function App() {
                   </div>
                   <div className="user-avatar admin-avatar">A</div>
                 </button>
+                <div className="dropdown-menu">
+                  <button className="dropdown-item" onClick={handleLogout}>
+                    <i className="fas fa-sign-out-alt"></i> Logout
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -388,6 +493,76 @@ function App() {
     </div>
   );
 }
+function AdminSettingsTab({ onResetPassword, onLogout }) {
+  return (
+    <div className="admin-settings">
+      <div className="admin-section-header">
+        <h2>Admin Settings</h2>
+        <p>Manage your admin account settings</p>
+      </div>
+
+      <div className="settings-cards">
+        <div className="settings-card">
+          <div className="settings-card-header">
+            <i className="fas fa-key settings-icon"></i>
+            <h3>Password Management</h3>
+          </div>
+          <p className="settings-description">
+            Change your admin password. You'll need to enter your current password first.
+          </p>
+          <button 
+            className="button warning"
+            onClick={onResetPassword}
+          >
+            <i className="fas fa-redo"></i> Reset Password
+          </button>
+        </div>
+
+        <div className="settings-card">
+          <div className="settings-card-header">
+            <i className="fas fa-sign-out-alt settings-icon"></i>
+            <h3>Session Management</h3>
+          </div>
+          <p className="settings-description">
+            Log out from the admin panel. You'll need to enter your password again to log back in.
+          </p>
+          <button 
+            className="button secondary"
+            onClick={onLogout}
+          >
+            <i className="fas fa-sign-out-alt"></i> Logout
+          </button>
+        </div>
+
+        <div className="settings-card">
+          <div className="settings-card-header">
+            <i className="fas fa-info-circle settings-icon"></i>
+            <h3>Admin Panel Information</h3>
+          </div>
+          <div className="settings-info">
+            <p><strong>Storage Location:</strong> Local Browser Storage</p>
+            <p><strong>Password Security:</strong> Password is stored locally</p>
+            <p><strong>Reset Option:</strong> Available via "Forgot Password"</p>
+            <p><strong>Session:</strong> Maintains until logout</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="security-notice">
+        <i className="fas fa-shield-alt"></i>
+        <div>
+          <h4>Security Notice</h4>
+          <p>
+            Your admin password is stored locally in your browser. For security reasons, 
+            avoid using this admin panel on shared computers. If you suspect unauthorized access, 
+            reset your password immediately.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Admin Overview Tab Component
 function AdminOverviewTab({ stats }) {
   if (!stats) {
@@ -900,8 +1075,6 @@ function AdminAnalyticsTab({ businessAnalytics }) {
     </div>
   );
 }
-
-// Category Management Tab Component
 function CategoryManagementTab({
   categories,
   onCreateCategory,

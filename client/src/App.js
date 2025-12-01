@@ -156,6 +156,10 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
   const [logoFile, setLogoFile] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState(null);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [previewLogo, setPreviewLogo] = useState(null);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -180,19 +184,145 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
         businessAddress: existingBusiness.businessAddress || "",
         businessPhone: existingBusiness.businessPhone || "",
       });
+      if (existingBusiness.logoUrl) {
+        setPreviewLogo(existingBusiness.logoUrl);
+      }
     }
   }, [existingBusiness]);
 
   const handleFileChange = (e) => {
-    setLogoFile(e.target.files[0]);
+    const file = e.target.files[0];
+    if (file) {
+      setLogoFile(file);
+      
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setPreviewLogo(previewUrl);
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleRemoveLogo = () => {
+    setLogoFile(null);
+    setPreviewLogo(null);
+    // If editing existing business and removing logo, we need to handle this
+    if (existingBusiness?.logoUrl) {
+      // You might want to set a flag to remove existing logo
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit(formData, logoFile);
-    setIsEditing(false);
+    
+    if (isUpdating) return; // Prevent multiple submissions
+    
+    setIsUpdating(true);
+    setUpdateError(null);
+    setUpdateSuccess(false);
+
+    try {
+      // Create FormData object for file upload
+      const submitData = new FormData();
+      
+      // Append all form fields
+      Object.keys(formData).forEach(key => {
+        if (formData[key] !== undefined && formData[key] !== null) {
+          submitData.append(key, formData[key]);
+        }
+      });
+
+      // Append logo file if exists
+      if (logoFile) {
+        submitData.append('logo', logoFile);
+      }
+
+      let response;
+      
+      // If editing existing business, make PUT request
+      if (existingBusiness && existingBusiness._id) {
+        response = await axios.put(
+          `${API_BASE_URL}/business/${existingBusiness._id}`,
+          submitData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+              // Removed Authorization header since backend doesn't need auth
+            }
+          }
+        );
+
+        if (response.data.success) {
+          setUpdateSuccess(true);
+          
+          // Reset logo file state
+          setLogoFile(null);
+          
+          // Call parent onSubmit callback if provided
+          if (onSubmit) {
+            onSubmit(response.data.business, logoFile);
+          }
+          
+          // Optionally exit edit mode
+          setTimeout(() => {
+            setIsEditing(false);
+            setUpdateSuccess(false);
+          }, 2000);
+        }
+      } else {
+        // If no existing business, call parent onSubmit (for create mode)
+        if (onSubmit) {
+          onSubmit(formData, logoFile);
+        }
+      }
+    } catch (error) {
+      console.error('Update failed:', error);
+      
+      // Provide more detailed error messages
+      let errorMessage = 'Failed to update business profile. Please try again.';
+      
+      if (error.response) {
+        // Server responded with error status
+        errorMessage = error.response.data?.error || 
+                       error.response.data?.message || 
+                       `Server error: ${error.response.status}`;
+      } else if (error.request) {
+        // Request was made but no response received
+        errorMessage = 'No response from server. Please check your connection.';
+      } else {
+        // Something happened in setting up the request
+        errorMessage = error.message || 'Request setup error';
+      }
+      
+      setUpdateError(errorMessage);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
+  const handleCancelEdit = () => {
+    // Reset form to original values
+    if (existingBusiness) {
+      setFormData({
+        businessName: existingBusiness.businessName || "",
+        businessCategory: existingBusiness.businessCategory || "",
+        businessDescription: existingBusiness.businessDescription || "",
+        businessWebsite: existingBusiness.businessWebsite || "",
+        businessAddress: existingBusiness.businessAddress || "",
+        businessPhone: existingBusiness.businessPhone || "",
+      });
+      setPreviewLogo(existingBusiness.logoUrl || null);
+    }
+    setLogoFile(null);
+    setUpdateError(null);
+    setUpdateSuccess(false);
+    setIsEditing(false);
+    
+    // Call parent onCancel if provided
+    if (onCancel) {
+      onCancel();
+    }
+  };
+
+  // --------- SHOW VIEW MODE -----------
   if (existingBusiness && !isEditing) {
     return (
       <div className="p-8 max-w-4xl mx-auto bg-white shadow-xl rounded-xl mt-10">
@@ -201,11 +331,12 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
             <Briefcase className="mr-3" />
             Your Business Profile
           </h2>
+
           <button
             onClick={() => setIsEditing(true)}
-            className="flex items-center px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition"
+            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
           >
-            <Edit3 size={18} className="mr-2" /> Edit
+            <Edit3 size={18} className="mr-2" /> Edit Profile
           </button>
         </div>
 
@@ -224,7 +355,9 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
 
           <div className="md:col-span-2">
             <p className="text-gray-500">Description</p>
-            <p className="text-gray-700">{existingBusiness.businessDescription}</p>
+            <p className="text-gray-700 whitespace-pre-line">
+              {existingBusiness.businessDescription}
+            </p>
           </div>
 
           <div>
@@ -272,6 +405,7 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
     );
   }
 
+  // --------- EDIT / CREATE MODE ----------
   return (
     <div className="p-8 max-w-4xl mx-auto bg-white shadow-xl rounded-xl mt-10">
       <div className="flex justify-between items-center border-b pb-3 mb-6">
@@ -282,111 +416,176 @@ const BusinessProfileScreen = ({ existingBusiness, onSubmit, onCancel, loading }
 
         {existingBusiness && (
           <button
-            onClick={() => setIsEditing(false)}
-            className="flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+            onClick={handleCancelEdit}
+            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
           >
-            <X size={18} className="mr-1" /> Cancel
+            Cancel
           </button>
         )}
       </div>
 
+      {/* Success Message */}
+      {updateSuccess && (
+        <div className="mb-4 p-4 bg-green-100 text-green-800 rounded-lg">
+          Business profile updated successfully!
+        </div>
+      )}
+
+      {/* Error Message */}
+      {updateError && (
+        <div className="mb-4 p-4 bg-red-100 text-red-800 rounded-lg">
+          {updateError}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <input
-            type="text"
-            placeholder="Business Name"
-            value={formData.businessName}
-            onChange={(e) =>
-              setFormData({ ...formData, businessName: e.target.value })
-            }
-            className="p-3 border rounded-lg"
-            required
-          />
+          <div>
+            <input
+              type="text"
+              placeholder="Business Name"
+              value={formData.businessName}
+              onChange={(e) =>
+                setFormData({ ...formData, businessName: e.target.value })
+              }
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              required
+            />
+          </div>
 
-          <select
-            value={formData.businessCategory}
-            onChange={(e) =>
-              setFormData({ ...formData, businessCategory: e.target.value })
-            }
-            className="p-3 border rounded-lg"
-            required
-          >
-            <option value="">Select Category</option>
-            {categories.map((cat) => (
-              <option key={cat._id} value={cat.name}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
+          <div>
+            <select
+              value={formData.businessCategory}
+              onChange={(e) =>
+                setFormData({ ...formData, businessCategory: e.target.value })
+              }
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              required
+            >
+              <option value="">Select Category</option>
+              {categories.map((cat) => (
+                <option key={cat._id} value={cat.name}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        <textarea
-          placeholder="Description (Max 500 chars)"
-          value={formData.businessDescription}
-          onChange={(e) =>
-            setFormData({ ...formData, businessDescription: e.target.value })
-          }
-          className="w-full p-3 border rounded-lg h-24"
-          required
-          maxLength={500}
-        />
-
-        <input
-          type="text"
-          placeholder="Physical Address"
-          value={formData.businessAddress}
-          onChange={(e) =>
-            setFormData({ ...formData, businessAddress: e.target.value })
-          }
-          className="w-full p-3 border rounded-lg"
-          required
-        />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <input
-            type="url"
-            placeholder="Website URL"
-            value={formData.businessWebsite}
+        <div>
+          <textarea
+            placeholder="Description (Max 500 chars)"
+            value={formData.businessDescription}
             onChange={(e) =>
-              setFormData({ ...formData, businessWebsite: e.target.value })
+              setFormData({ ...formData, businessDescription: e.target.value })
             }
-            className="p-3 border rounded-lg"
+            className="w-full p-3 border rounded-lg h-24 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            required
+            maxLength={500}
           />
+          <p className="text-sm text-gray-500 mt-1">
+            {formData.businessDescription.length}/500 characters
+          </p>
+        </div>
 
+        <div>
           <input
-            type="tel"
-            placeholder="Phone Number"
-            value={formData.businessPhone}
+            type="text"
+            placeholder="Physical Address"
+            value={formData.businessAddress}
             onChange={(e) =>
-              setFormData({ ...formData, businessPhone: e.target.value })
+              setFormData({ ...formData, businessAddress: e.target.value })
             }
-            className="p-3 border rounded-lg"
+            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             required
           />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <input
+              type="url"
+              placeholder="Website URL (optional)"
+              value={formData.businessWebsite}
+              onChange={(e) =>
+                setFormData({ ...formData, businessWebsite: e.target.value })
+              }
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <input
+              type="tel"
+              placeholder="Phone Number"
+              value={formData.businessPhone}
+              onChange={(e) =>
+                setFormData({ ...formData, businessPhone: e.target.value })
+              }
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              required
+            />
+          </div>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Business Logo
           </label>
-          <input type="file" accept="image/*" onChange={handleFileChange} />
-          <p className="text-xs text-gray-500 mt-1">
-            Recommended size: <strong>500px × 500px</strong>
+          
+          {previewLogo && (
+            <div className="mb-4 relative inline-block">
+              <img
+                src={previewLogo}
+                alt="Logo preview"
+                className="w-32 h-32 object-cover rounded-lg border"
+              />
+              <button
+                type="button"
+                onClick={handleRemoveLogo}
+                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
+          
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+          />
+          <p className="text-sm text-gray-500 mt-1">
+            Upload a square logo for best results. Max size: 5MB
           </p>
         </div>
 
-        <div className="flex space-x-4">
+        {/* BUTTONS */}
+        <div className="flex flex-col gap-3 pt-4">
           <button
             type="submit"
-            disabled={loading}
-            className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg"
+            disabled={isUpdating || loading}
+            className="w-full py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {loading
-              ? "Submitting..."
+            {isUpdating
+              ? "Updating..."
+              : loading
+              ? "Saving..."
               : existingBusiness
-              ? "Update Profile"
+              ? "Update Business Profile"
               : "Register Business"}
           </button>
+
+          {existingBusiness && (
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              className="w-full py-3 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition-colors"
+            >
+              Cancel Edit
+            </button>
+          )}
         </div>
       </form>
     </div>
@@ -2365,6 +2564,7 @@ const App = () => {
       localStorage.setItem('userId', newUser._id || newUser.id);
       localStorage.setItem('user', JSON.stringify(newUser));
       
+    
       setToken(newToken);
       setUser(newUser);
       
