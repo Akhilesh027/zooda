@@ -58,8 +58,10 @@ const AuthScreen = ({ isRegister, onAuthSuccess, switchMode }) => {
     firstName: '', lastName: '', email: '', password: '', confirmPassword: ''
   });
   const [authLoading, setAuthLoading] = useState(false);
-  
-  const API_URL = isRegister ? '/register' : '/login';
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
 
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
@@ -72,72 +74,231 @@ const AuthScreen = ({ isRegister, onAuthSuccess, switchMode }) => {
     }
     
     try {
-      console.log(`[DEBUG] Attempting Auth: ${isRegister ? 'Register' : 'Login'} to ${API_URL}`);
-      const payload = isRegister ? formData : { email: formData.email, password: formData.password };
-      const res = await axios.post(API_URL, payload);
+      const payload = isRegister ? formData : { 
+        email: formData.email, 
+        password: formData.password 
+      };
+      const res = await axios.post(isRegister ? '/register' : '/login', payload);
       
-      console.log('[DEBUG] Auth Success Response:', res.data);
       onAuthSuccess('success', `Welcome, ${res.data.user.firstName}!`, res.data.token, res.data.user);
     } catch (error) {
-      console.error('[ERROR] Auth failed:', error.response?.data || error.message);
-      onAuthSuccess('error', error.response?.data?.message || 'Authentication failed. Check API URL and server status.');
+      onAuthSuccess('error', error.response?.data?.message || 'Authentication failed');
     } finally {
       setAuthLoading(false);
     }
   };
-  
+
+  // SIMPLE PASSWORD RESET
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    
+    // Basic validation
+    if (!forgotEmail || !newPassword || !confirmNewPassword) {
+      onAuthSuccess('error', 'Please fill all fields');
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      onAuthSuccess('error', 'Password must be at least 6 characters');
+      return;
+    }
+    
+    if (newPassword !== confirmNewPassword) {
+      onAuthSuccess('error', 'Passwords do not match');
+      return;
+    }
+    
+    setAuthLoading(true);
+    try {
+      const res = await axios.post('https://api.zooda.in/reset-password-direct', {
+        email: forgotEmail,
+        newPassword: newPassword
+      });
+      
+      if (res.data.success) {
+        onAuthSuccess('success', 'Password reset successful! You can now login');
+        // Reset form and go back to login
+        setIsForgotPassword(false);
+        setForgotEmail('');
+        setNewPassword('');
+        setConfirmNewPassword('');
+      }
+    } catch (error) {
+      onAuthSuccess('error', 'Failed to reset password');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // FORGOT PASSWORD SCREEN
+  if (isForgotPassword) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-2xl">
+          <h3 className="text-2xl font-bold text-center text-gray-800 mb-2">
+            Reset Your Password
+          </h3>
+          <p className="text-gray-600 text-center mb-6">
+            Enter your email and new password
+          </p>
+          
+          <form onSubmit={handleResetPassword}>
+            <div className="space-y-4">
+              <input 
+                type="email" 
+                placeholder="Your email" 
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg"
+                required
+              />
+              <input 
+                type="password" 
+                placeholder="New Password" 
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg"
+                required
+              />
+              <input 
+                type="password" 
+                placeholder="Confirm New Password" 
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg"
+                required
+              />
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              <button 
+                type="submit" 
+                disabled={authLoading}
+                className="flex-1 py-3 bg-indigo-600 text-white font-semibold rounded-lg disabled:opacity-50"
+              >
+                {authLoading ? 'Resetting...' : 'Reset Password'}
+              </button>
+              <button 
+                type="button"
+                onClick={() => {
+                  setIsForgotPassword(false);
+                  setForgotEmail('');
+                  setNewPassword('');
+                  setConfirmNewPassword('');
+                }}
+                className="flex-1 py-3 bg-gray-200 text-gray-800 font-semibold rounded-lg"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+          
+          <div className="text-center mt-6">
+            <button 
+              onClick={() => {
+                setIsForgotPassword(false);
+                setForgotEmail('');
+                setNewPassword('');
+                setConfirmNewPassword('');
+              }}
+              className="text-indigo-600 hover:text-indigo-800"
+            >
+              Back to Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // MAIN LOGIN/REGISTER SCREEN
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-2xl">
         <h2 className="text-3xl font-bold text-center text-indigo-600 mb-8">
-          {isRegister ? 'Business Owner Register' : 'Business Owner Login'}
+          {isRegister ? 'Register' : 'Login'}
         </h2>
+        
         <form onSubmit={handleAuthSubmit} className="space-y-6">
           {isRegister && (
             <>
               <input 
-                type="text" name="firstName" placeholder="First Name" 
+                type="text" 
+                placeholder="First Name" 
+                value={formData.firstName}
                 onChange={(e) => setFormData({...formData, firstName: e.target.value})} 
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" required 
+                className="w-full p-3 border border-gray-300 rounded-lg" 
+                required 
               />
               <input 
-                type="text" name="lastName" placeholder="Last Name" 
+                type="text" 
+                placeholder="Last Name" 
+                value={formData.lastName}
                 onChange={(e) => setFormData({...formData, lastName: e.target.value})} 
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" required 
+                className="w-full p-3 border border-gray-300 rounded-lg" 
+                required 
               />
             </>
           )}
+          
           <input 
-            type="email" name="email" placeholder="Email" 
+            type="email" 
+            placeholder="Email" 
+            value={formData.email}
             onChange={(e) => setFormData({...formData, email: e.target.value})} 
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" required 
+            className="w-full p-3 border border-gray-300 rounded-lg" 
+            required 
           />
+          
           <input 
-            type="password" name="password" placeholder="Password" 
+            type="password" 
+            placeholder="Password" 
+            value={formData.password}
             onChange={(e) => setFormData({...formData, password: e.target.value})} 
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" required 
+            className="w-full p-3 border border-gray-300 rounded-lg" 
+            required 
           />
+          
           {isRegister && (
             <input 
-              type="password" name="confirmPassword" placeholder="Confirm Password" 
+              type="password" 
+              placeholder="Confirm Password" 
+              value={formData.confirmPassword}
               onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} 
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" required 
+              className="w-full p-3 border border-gray-300 rounded-lg" 
+              required 
             />
           )}
+          
+          {!isRegister && (
+            <div className="text-right">
+              <button 
+                type="button"
+                onClick={() => setIsForgotPassword(true)}
+                className="text-sm text-indigo-600 hover:text-indigo-800"
+              >
+                Forgot Password?
+              </button>
+            </div>
+          )}
+          
           <button 
             type="submit" 
             disabled={authLoading} 
-            className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-white font-semibold transition duration-200 disabled:opacity-50"
+            className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg disabled:opacity-50"
           >
             {authLoading ? 'Processing...' : (isRegister ? 'Register' : 'Login')}
           </button>
         </form>
-        <button 
-          onClick={switchMode} 
-          className="mt-6 w-full text-center text-indigo-600 hover:text-indigo-800 transition duration-200"
-        >
-          {isRegister ? 'Already have an account? Login' : 'Need an account? Register'}
-        </button>
+        
+        <div className="mt-6 text-center">
+          <button 
+            onClick={switchMode} 
+            className="text-indigo-600 hover:text-indigo-800"
+          >
+            {isRegister ? 'Already have an account? Login' : 'Need an account? Register'}
+          </button>
+        </div>
       </div>
     </div>
   );

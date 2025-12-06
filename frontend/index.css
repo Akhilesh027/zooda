@@ -604,6 +604,19 @@ body {
     position: relative;
     right: 30px;
 }
+.password-field {
+  position: relative;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 55px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+}
 
 .profile-divider {
     border: none;
@@ -1649,7 +1662,7 @@ body {
   padding: 10px 14px;
   border: 1px solid #ccc;
   border-radius: 8px;
-  background-color: #f5f5f5;
+  background-color: #4CAF50;
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.2s, border-color 0.2s;
@@ -4161,4 +4174,25 @@ body {
   margin: 15px;
   background-color: #10b981; /* Indigo 600 */
   border-color: #10b981;
+}
+/* -------- POST DETAIL IMAGE FIX -------- */
+.post-detail-sections img,
+.post-detail-sections .post-image {
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  object-fit: cover;
+}
+
+/* -------- MOBILE RESPONSIVE -------- */
+@media (max-width: 480px) {
+  .post-detail-sections {
+    width: 100% !important;
+    padding: 10px !important;
+  }
+
+  .post-detail-sections img {
+    width: 100% !important;
+    height: auto !important;
+  }
 }

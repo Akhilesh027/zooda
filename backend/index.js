@@ -3885,6 +3885,36 @@ app.delete("/api/post/:postId/comment/:commentId", async (req, res) => {
     });
   }
 });
+app.post('/reset-password-direct', async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+    
+    // Find user
+    const user = await User.findOne({ email });
+    
+    // If user doesn't exist, return success anyway (security)
+    if (!user) {
+      return res.json({ success: true, message: 'Password updated' });
+    }
+    
+    // Check if same password
+    const isSame = await bcrypt.compare(newPassword, user.password);
+    if (isSame) {
+      return res.json({ success: true, message: 'Password updated' });
+    }
+    
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    
+    await user.save();
+    
+    res.json({ success: true, message: 'Password updated successfully' });
+    
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Reset failed' });
+  }
+});
 
 const PORT = process.env.PORT || 5000;
 

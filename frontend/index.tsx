@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import axios from "axios";
 import logoUrl from './images/logo.png';
+import { Eye, EyeOff } from "lucide-react";
+
 const shuffleArray = (array: any[]) => {
   let currentIndex = array.length,
     randomIndex;
@@ -790,13 +792,7 @@ const UserProfilePage = ({
       <style>{profilepage}</style>
 
       <main className="profile-content">
-        {error && (
-          <div className="error-state">
-            <span className="material-icons">error_outline</span>
-            <p>{error}</p>
-          </div>
-        )}
-        
+  
         {/* Profile Section */}
         <section className="profile-section">
           <div className="profile-header-card">
@@ -935,61 +931,7 @@ const UserProfilePage = ({
         </section>
 
         {/* Following Section */}
-        <section className="following-section">
-            <div className="section-header">
-                <h2>Businesses I Follow</h2>
-                <span className="follow-count">{followingBusinesses.length} following</span>
-            </div>
-
-            {loading ? (
-                <div className="loading-state">
-                    <span className="material-icons">hourglass_empty</span>
-                    <p>Loading followed businesses...</p>
-                </div>
-            ) : followingBusinesses.length === 0 ? (
-                <div className="empty-state">
-                    <span className="material-icons">not_interested</span>
-                    <p>You aren't following any businesses yet.</p>
-                    <p className="empty-subtext">Find exciting companies to follow!</p>
-                </div>
-            ) : (
-                <div className="businesses-grid">
-                    {followingBusinesses.map((company) => (
-                        <div 
-                            key={company._id} 
-                            className="business-card"
-                            onClick={() => onSelectCompany(company)}
-                        >
-                            <div className="business-avatar">
-                                {company.logoUrl ? (
-                                    <img 
-                                        src={company.logoUrl} 
-                                        alt={company.name}
-                                        onError={(e) => { e.currentTarget.src = 'https://placehold.co/50x50/363636/A8A8A8?text=C'; }}
-                                    />
-                                ) : (
-                                    <span className="material-icons">business</span>
-                                )}
-                            </div>
-                            <div className="business-info">
-                                <p className="business-name">{company.name}</p>
-                                <p className="business-category">{company.category}</p>
-                                <div className="business-stats">
-                                    <span className="stat">
-                                        <span className="material-icons">group</span>
-                                        {company.followers}
-                                    </span>
-                                    <span className="stat">
-                                        <span className="material-icons">article</span>
-                                        {company.posts}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </section>
+      
 
         {/* Logout Section */}
         <section className="logout-section">
@@ -1843,13 +1785,6 @@ const CompanyListItem = ({
     </article>
   );
 };
-
-interface CompanyListItemProps {
-  company: Company;
-  onSelectCompany: (company: Company) => void;
-  user?: User;
-  onLoginClick?: () => void; // ✅ callback to open login form
-}
 
 
 interface CompanyListPageProps {
@@ -3247,16 +3182,7 @@ const PostGridItem = ({
           </div>
         </div>
         {/* Show stats in header */}
-        <div className="post-stats-header">
-          <span className="post-stat">
-            <span className="material-icons" style={{ fontSize: '16px', marginRight: '4px' }}>favorite</span>
-            {likesCount}
-          </span>
-          <span className="post-stat">
-            <span className="material-icons" style={{ fontSize: '16px', marginRight: '4px' }}>chat</span>
-            {commentsCount}
-          </span>
-        </div>
+       
       </div>
 
       {/* Post Image */}
@@ -3369,7 +3295,7 @@ const PostGridItem = ({
                       postComments.map((comment, index) => (
                         <div key={index} className="comment-item">
                           <strong className="comment-username">
-                            {comment.userId?.name || 'User'}
+                            {comment.userId?.email || 'User'}
                           </strong>
                           <span className="comment-text">{comment.text}</span>
                         </div>
@@ -3592,9 +3518,9 @@ const styles = `
 
 .post-image {
   width: 100%;
-  height: 300px;
-  object-fit: cover;
-  display: block;
+  height: 500px;
+  object-fit: fill;
+ 
 }
 
 .post-engagement {
@@ -3856,6 +3782,11 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #555555;
 }
+  @media (max-width: 480px) {
+    
+    .post-image {
+      height: auto;
+      }
 `;
 
 // Add this style to your document
@@ -4238,15 +4169,25 @@ const ProfilePage = ({
       width: "100%",
     }}
   >
-    <img
-      src={company.logoUrl}
-      style={{
-        width: "80px",
-        height: "80px",
-        borderRadius: "50%",
-        objectFit: "cover",
-      }}
-    />
+  <img
+  src={
+    company.logoUrl ||
+    "https://placehold.co/140x140?text=Logo"
+  }
+  alt={`${company.businessName} Logo`}
+  className="profile-logo"
+  style={{
+    width: 80,
+    height: 80,
+    borderRadius: "50%",
+    objectFit: "cover",
+  }}
+  onError={(e) => {
+    e.currentTarget.src = "https://placehold.co/140x140?text=Logo";
+  }}
+/>
+
+
 
     <h2
       style={{
@@ -4313,7 +4254,7 @@ const ProfilePage = ({
   <p
     style={{
       margin: "0",
-      color: "#555",
+      color: "#fff",
       fontSize: ".95rem",
     }}
   >
@@ -4415,16 +4356,7 @@ const ProfilePage = ({
                                 `https://picsum.photos/400/400?random=${post._id}`)
                             }
                           />
-                          <div className="post-image-overlay">
-                            <div className="post-stats">
-                              <span className="stat">
-                                ❤️ {post.likes}
-                              </span>
-                              <span className="stat">
-                                💬 {post.comments}
-                              </span>
-                            </div>
-                          </div>
+                         
                         </div>
                       ))
                     ) : (
@@ -4498,18 +4430,22 @@ const ProfilePage = ({
                 </div>
 
                 {/* Post Detail Section */}
-                <div className="post-detail-section">
-                  <PostGridItem
-                    post={selectedPost}
-                    postIndex={posts.findIndex(p => p._id === selectedPost._id)}
-                    onSelectPost={() => {}}
-                    onLike={handleLike}
-                    onComment={handleComment}
-                    onShare={handleShare}
-                    user={user}
-                    onLoginRequest={onLoginRequest}
-                  />
-                </div>
+             <div
+  className="post-detail-sections"
+  style={{ width: "50%", margin: "0 auto" }}
+>
+  <PostGridItem
+    post={selectedPost}
+    postIndex={posts.findIndex(p => p._id === selectedPost._id)}
+    onSelectPost={() => {}}
+    onLike={handleLike}
+    onComment={handleComment}
+    onShare={handleShare}
+    user={user}
+    onLoginRequest={onLoginRequest}
+  />
+</div>
+
               </div>
             )}
           </>
@@ -4562,17 +4498,11 @@ const Footer = ({ companyName = "zooda" }: FooterProps) => {
           <div className="flex flex-col items-center md:items-end gap-2 text-gray-300">
             <p className="flex items-center gap-2">
               <span className="material-icons text-green-400">email</span>
-              contact@{companyName.toLowerCase().replace(/\s+/g, "")}.com
+               zoodanew@gmail.com
             </p>
-
-            <p className="flex items-center gap-2">
-              <span className="material-icons text-green-400">phone</span>
-              +1 (555) 123-4567
-            </p>
-
             <p className="flex items-center gap-2">
               <span className="material-icons text-green-400">location_on</span>
-              123 Business St, City, State
+              vijyawada
             </p>
           </div>
         </div>
@@ -4608,15 +4538,17 @@ interface LoginModalProps {
 const LoginModal = ({ isOpen, onClose, onLogin, onOpenRegister }: LoginModalProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
+  const [error, setError] = useState("");
   const [forgotStep, setForgotStep] = useState<"email" | "reset" | null>(null);
   const [forgotEmail, setForgotEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Reset form when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setEmail("");
@@ -4654,14 +4586,9 @@ const LoginModal = ({ isOpen, onClose, onLogin, onOpenRegister }: LoginModalProp
       if (token) localStorage.setItem("authToken", token);
 
       onLogin(userToStore);
-      setEmail("");
-      setPassword("");
-      setError("");
       onClose();
     } catch (err: any) {
-      setError(
-        err.response?.data?.message || "Login failed. Please try again."
-      );
+      setError(err.response?.data?.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -4669,22 +4596,19 @@ const LoginModal = ({ isOpen, onClose, onLogin, onOpenRegister }: LoginModalProp
 
   const handleForgotEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
-    
+    setLoading(true);
+
     try {
-      const res = await axios.post(`${API_BASE_URL}/api/auth/check-email`, { 
-        email: forgotEmail 
+      const res = await axios.post(`${API_BASE_URL}/api/auth/check-email`, {
+        email: forgotEmail,
       });
-      
+
       if (res.data.exists) {
         setForgotStep("reset");
-        setError("");
-      } else {
-        setError("Email not found. Please check your email address.");
-      }
+      } else setError("Email not found. Please check your email");
     } catch (err: any) {
-      setError(err.response?.data?.message || "Error checking email. Please try again.");
+      setError(err.response?.data?.message || "Error checking email");
     } finally {
       setLoading(false);
     }
@@ -4693,32 +4617,22 @@ const LoginModal = ({ isOpen, onClose, onLogin, onOpenRegister }: LoginModalProp
   const handleResetPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    
-    if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-    
-    if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters long");
-      return;
-    }
+
+    if (newPassword !== confirmPassword) return setError("Passwords do not match");
+    if (newPassword.length < 6) return setError("Password must be at least 6 characters");
 
     setLoading(true);
+
     try {
       await axios.post(`${API_BASE_URL}/api/auth/reset-password`, {
         email: forgotEmail,
         newPassword,
       });
-      
-      setError("");
-      alert("Password updated successfully. Please login with your new password.");
+
+      alert("Password updated successfully");
       setForgotStep(null);
-      setForgotEmail("");
-      setNewPassword("");
-      setConfirmPassword("");
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to reset password. Please try again.");
+      setError(err.response?.data?.message || "Failed to update password");
     } finally {
       setLoading(false);
     }
@@ -4744,168 +4658,130 @@ const LoginModal = ({ isOpen, onClose, onLogin, onOpenRegister }: LoginModalProp
       <div className="modal-content">
         <div className="modal-header">
           <h3>
-            {forgotStep 
-              ? (forgotStep === "email" ? "Forgot Password" : "Reset Password") 
-              : "Login"
-            }
+            {forgotStep ? (forgotStep === "email" ? "Forgot Password" : "Reset Password") : "Login"}
           </h3>
           <button onClick={onClose} className="modal-close">
             <span className="material-icons">close</span>
           </button>
         </div>
 
-        {error && (
-          <div className="error-message">
-            {error}
-          </div>
-        )}
+        {error && <div className="error-message">{error}</div>}
 
         {!forgotStep ? (
-          // LOGIN FORM
           <>
             <form onSubmit={handleLoginSubmit} className="modal-form">
               <div className="form-group">
-                <label htmlFor="login-email">Email</label>
+                <label>Email</label>
                 <input
-                  id="login-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  required
                   disabled={loading}
                   placeholder="Enter your email"
                 />
               </div>
-              
-              <div className="form-group">
-                <label htmlFor="login-password">Password</label>
+
+              <div className="form-group password-field">
+                <label>Password</label>
                 <input
-                  id="login-password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  required
                   disabled={loading}
                   placeholder="Enter your password"
                 />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
-              
-              <button 
-                type="submit" 
-                className="btn btn-solid login-btn"
-                disabled={loading}
-              >
+
+              <button type="submit" className="btn btn-solid login-btn" disabled={loading}>
                 {loading ? "Logging in..." : "Login"}
               </button>
             </form>
-            
+
             <div className="modal-footer">
-              <button
-                type="button"
-                className="footer-link"
-                onClick={() => setForgotStep("email")}
-                disabled={loading}
-              >
+              <button className="footer-link" onClick={() => setForgotStep("email")}>
                 Forgot Password?
               </button>
-              
+
               <div className="register-section">
                 <span>Don't have an account? </span>
-                <button
-                  type="button"
-                  className="footer-link register-link"
-                  onClick={handleSwitchToRegister}
-                  disabled={loading}
-                >
+                <button className="footer-link register-link" onClick={handleSwitchToRegister}>
                   Register here
                 </button>
               </div>
             </div>
           </>
         ) : forgotStep === "email" ? (
-          // FORGOT PASSWORD - EMAIL STEP
           <>
             <form onSubmit={handleForgotEmailSubmit} className="modal-form">
               <div className="form-group">
-                <label htmlFor="forgot-email">Enter your email</label>
+                <label>Enter your email</label>
                 <input
-                  id="forgot-email"
                   type="email"
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
-                  required
-                  disabled={loading}
-                  placeholder="Enter your registered email"
+                  placeholder="Enter email"
                 />
               </div>
-              
+
               <div className="forgot-password-buttons">
-                <button 
-                  type="submit" 
-                  className="btn btn-solid"
-                  disabled={loading}
-                >
+                <button type="submit" className="btn btn-solid" disabled={loading}>
                   {loading ? "Checking..." : "Next"}
                 </button>
-                
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={handleBackToLogin}
-                  disabled={loading}
-                >
+                <button type="button" className="btn btn-outline" onClick={handleBackToLogin}>
                   Back to Login
                 </button>
               </div>
             </form>
           </>
         ) : (
-          // FORGOT PASSWORD - RESET STEP
           <>
             <form onSubmit={handleResetPasswordSubmit} className="modal-form">
-              <div className="form-group">
-                <label htmlFor="new-password">New Password</label>
+              <div className="form-group password-field">
+                <label>New Password</label>
                 <input
-                  id="new-password"
-                  type="password"
+                  type={showNewPassword ? "text" : "password"}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  disabled={loading}
-                  placeholder="Enter new password"
-                  minLength={6}
+                  placeholder="New password"
                 />
-              </div>
-              
-              <div className="form-group">
-                <label htmlFor="confirm-password">Confirm Password</label>
-                <input
-                  id="confirm-password"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  disabled={loading}
-                  placeholder="Confirm new password"
-                  minLength={6}
-                />
-              </div>
-              
-              <div className="forgot-password-buttons">
-                <button 
-                  type="submit" 
-                  className="btn btn-solid"
-                  disabled={loading}
-                >
-                  {loading ? "Updating..." : "Update Password"}
-                </button>
-                
                 <button
                   type="button"
-                  className="btn btn-outline"
-                  onClick={handleBackToLogin}
-                  disabled={loading}
+                  className="password-toggle"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
                 >
+                  {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
+              <div className="form-group password-field">
+                <label>Confirm Password</label>
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm password"
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
+              <div className="forgot-password-buttons">
+                <button type="submit" className="btn btn-solid" disabled={loading}>
+                  {loading ? "Updating..." : "Update Password"}
+                </button>
+                <button type="button" className="btn btn-outline" onClick={handleBackToLogin}>
                   Back to Login
                 </button>
               </div>
@@ -4916,6 +4792,7 @@ const LoginModal = ({ isOpen, onClose, onLogin, onOpenRegister }: LoginModalProp
     </div>
   );
 };
+
 
 // ---------------- REGISTER MODAL ----------------
 interface RegisterModalProps {
@@ -4929,13 +4806,13 @@ const RegisterModal = ({ isOpen, onClose, onRegister, onOpenLogin }: RegisterMod
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [interests, setInterests] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
 
-  // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
       setName("");
@@ -4950,94 +4827,54 @@ const RegisterModal = ({ isOpen, onClose, onRegister, onOpenLogin }: RegisterMod
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/api/admin/categories`);
-      setCategories(response.data);
-    } catch (err) {
-      console.error('Error fetching categories:', err);
-      setError('Failed to load categories');
+      const res = await axios.get(`${API_BASE_URL}/api/admin/categories`);
+      setCategories(res.data);
+    } catch {
+      setError("Failed to load categories");
     } finally {
       setLoading(false);
     }
   };
-// ---------------- REGISTER MODAL (UPDATED handleSubmit) ----------------
 
- const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setError("");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
 
-  if (password.length < 6) {
-    setError("Password must be at least 6 characters long");
-    return;
-  }
+    if (password.length < 6) return setError("Password must be 6+ characters");
+    if (interests.length === 0) return setError("Select at least one interest");
 
-  if (interests.length === 0) {
-    setError("Please select at least one interest");
-    return;
-  }
+    setRegisterLoading(true);
 
-  setRegisterLoading(true);
+    try {
+      const res = await axios.post(`${API_BASE_URL}/api/auth/register`, {
+        name,
+        email,
+        password,
+        interests,
+      });
 
-  try {
-    const response = await axios.post(`${API_BASE_URL}/api/auth/register`, {
-      name,
-      email,
-      password,
-      interests,
-    });
+      const userData = res.data.user || res.data.data || res.data;
+      const userToStore = {
+        _id: userData._id,
+        name: userData.name,
+        email: userData.email,
+        isLoggedIn: false,
+      };
 
-    if (!response.data.success && response.data.message) {
-      throw new Error(response.data.message);
-    }
-
-    const userData = response.data.user || response.data.data || response.data;
-
-    // NOTE: We keep isLoggedIn: false here as registration doesn't guarantee a live session/token,
-    // but the parent component may interpret the successful registration as an event to handle.
-    const userToStore = {
-      _id: userData._id,
-      name: userData.name,
-      email: userData.email,
-      isLoggedIn: false, 
-    };
-
-    // Save registered user data (optional, used for potential pre-fill)
-    localStorage.setItem("recentRegisteredUser", JSON.stringify(userToStore));
-
-    // 1. Notify parent via callback (analogous to onLogin in LoginModal)
-    onRegister(userToStore);
-
-    // Clear form fields
-    setName("");
-    setEmail("");
-    setPassword("");
-    setInterests([]);
-    setError("");
-
-    // 2. Close modal (analogous to onClose in LoginModal)
-    onClose();
-
-    // ❌ REMOVED: setTimeout(() => onOpenLogin(), 300);
-    // ❌ REMOVED: setTimeout(() => { window.location.href = "/?type=home"; }, 500);
-
-  } catch (err: any) {
-    setError(
-      err.response?.data?.message ||
-        err.message ||
-        "Registration failed. Please try again."
-    );
-  } finally {
-    setRegisterLoading(false);
-  }
-};
-  const toggleInterest = (itemName: string) => {
-    if (interests.includes(itemName)) {
-      setInterests(interests.filter((i) => i !== itemName));
-    } else {
-      setInterests([...interests, itemName]);
+      localStorage.setItem("recentRegisteredUser", JSON.stringify(userToStore));
+      onRegister(userToStore);
+      onClose();
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Registration failed");
+    } finally {
+      setRegisterLoading(false);
     }
   };
 
-  const handleSwitchToLogin = () => {
+  const toggleInterest = (item: string) =>
+    setInterests((prev) => (prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item]));
+
+  const switchToLogin = () => {
     onClose();
     onOpenLogin();
   };
@@ -5054,131 +4891,90 @@ const RegisterModal = ({ isOpen, onClose, onRegister, onOpenLogin }: RegisterMod
           </button>
         </div>
 
-        {error && (
-          <div className="error-message">
-            {error}
-          </div>
-        )}
+        {error && <div className="error-message">{error}</div>}
 
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
-            <label htmlFor="register-name">Full Name</label>
+            <label>Full Name</label>
             <input
-              id="register-name"
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
               disabled={registerLoading}
-              placeholder="Enter your full name"
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter full name"
             />
           </div>
-          
+
           <div className="form-group">
-            <label htmlFor="register-email">Email</label>
+            <label>Email</label>
             <input
-              id="register-email"
               type="email"
               value={email}
+              disabled={registerLoading}
               onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={registerLoading}
-              placeholder="Enter your email"
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="register-password">Password</label>
-            <input
-              id="register-password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={registerLoading}
-              placeholder="Enter password (min. 6 characters)"
-              minLength={6}
+              placeholder="Enter email"
             />
           </div>
 
+          <div className="form-group password-field">
+            <label>Password</label>
+            <input
+              type={showPassword ? "text" : "password"}
+              value={password}
+              disabled={registerLoading}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password"
+            />
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+
           <div className="form-group">
-            <label className="form-label">Select Interests</label>
-            
+            <label>Select Interests</label>
             {loading ? (
-              <div className="loading-text">Loading categories...</div>
-            ) : categories.length === 0 ? (
-              <div className="no-categories-text">No categories available</div>
+              <div>Loading categories...</div>
             ) : (
               <div className="categories-section">
-                {categories.map((category) => (
-                  <div key={category._id} className="category-group">
-                    <button
-                      type="button"
-                      className={`category-btn ${
-                        interests.includes(category.name) ? "active" : ""
-                      }`}
-                      onClick={() => toggleInterest(category.name)}
-                      disabled={registerLoading}
-                    >
-                      <span className="category-name">{category.name}</span>
-                      {category.subcategories && category.subcategories.length > 0 && (
-                        <span className="subcount-badge">
-                          {category.subcategories.length} subcategories
-                        </span>
-                      )}
-                    </button>
-
-                    {category.subcategories && category.subcategories.length > 0 && (
-                      <div className="subcategories-group">
-                        {category.subcategories.map((subcategory: any) => (
-                          <button
-                            type="button"
-                            key={subcategory._id}
-                            className={`subcategory-btn ${
-                              interests.includes(subcategory.name) ? "active" : ""
-                            }`}
-                            onClick={() => toggleInterest(subcategory.name)}
-                            disabled={registerLoading}
-                          >
-                            {subcategory.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                {categories.map((cat) => (
+                  <button
+                    key={cat._id}
+                    type="button"
+                    disabled={registerLoading}
+                    className={`category-btn ${interests.includes(cat.name) ? "active" : ""}`}
+                    onClick={() => toggleInterest(cat.name)}
+                  >
+                    {cat.name}
+                  </button>
                 ))}
               </div>
             )}
-            
-           
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="btn btn-solid register-btn"
             disabled={registerLoading || loading}
           >
-            {registerLoading ? "Creating Account..." : "Register"}
+            {registerLoading ? "Creating..." : "Register"}
           </button>
         </form>
-        
+
         <div className="modal-footer">
-          <div className="login-section">
-            <span>Already have an account? </span>
-            <button
-              type="button"
-              className="footer-link login-link"
-              onClick={handleSwitchToLogin}
-              disabled={registerLoading}
-            >
-              Login here
-            </button>
-          </div>
+          <span>Already have an account?</span>
+          <button className="footer-link login-link" onClick={switchToLogin}>
+            Login here
+          </button>
         </div>
       </div>
     </div>
   );
 };
+
 
 // ---------------- HASH ROUTER HOOK ----------------
 // ---------------- HASH ROUTER HOOK ----------------
