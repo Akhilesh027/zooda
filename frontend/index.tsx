@@ -149,15 +149,11 @@ const getActivePromotions = async (): Promise<Promotion[]> => {
   try {
     const response = await axios.get(`https://api.zooda.in/api/promotion`);
 
-    // Handle both response structures
     if (response.data.success && Array.isArray(response.data.data)) {
       return response.data.data.map((promo: any) => ({
         ...promo,
-        // Map displayType to type for compatibility with existing code
         type: promo.displayType,
-        // Map link to targetUrl for compatibility
         targetUrl: promo.link,
-        // Ensure we have the main id field
         _id: promo._id || promo.id,
       }));
     } else if (Array.isArray(response.data.promotions)) {
@@ -321,15 +317,6 @@ interface SearchResult {
   price?: string;
 }
 
-// ---------------- SEARCH PAGE ----------------
-interface SearchPageProps {
-  searchQuery: string;
-  onSelectSearchResult: (result: any) => void;
-  onSearchChange: (query: string) => void;
-  onBack: () => void;
-  searchResults: any[];
-  loading: boolean;
-}
 const SearchPage = ({
   onSelectSearchResult,
   onSearchChange,
@@ -1962,7 +1949,7 @@ const CompanyListPage = ({
                   trend: "Rising",
                   siteUrl: item.businessWebsite || "#",
                   logoUrl:
-                    item.logoUrl || "https://placehold.co/100x100?text=No+Logo",
+                    item.logoUrl,
                   posts,
                   products,
                   totalPosts: posts.length,
@@ -4169,23 +4156,29 @@ const ProfilePage = ({
       width: "100%",
     }}
   >
+{company.logoUrl ? (
   <img
-  src={
-    company.logoUrl ||
-    "https://placehold.co/140x140?text=Logo"
-  }
-  alt={`${company.businessName} Logo`}
-  className="profile-logo"
-  style={{
-    width: 80,
-    height: 80,
-    borderRadius: "50%",
-    objectFit: "cover",
-  }}
-  onError={(e) => {
-    e.currentTarget.src = "https://placehold.co/140x140?text=Logo";
-  }}
-/>
+    src={company.logoUrl}
+    alt={`${company.name} Logo`}
+    style={{
+      width: 80,
+      height: 80,
+      borderRadius: "50%",
+      objectFit: "cover",
+    }}
+    onError={(e) => (e.currentTarget.style.display = "none")}
+  />
+) : (
+  <div
+    style={{
+      width: 80,
+      height: 80,
+      borderRadius: "50%",
+      background: "#555",
+    }}
+  ></div>
+)}
+
 
 
 
@@ -4975,9 +4968,6 @@ const RegisterModal = ({ isOpen, onClose, onRegister, onOpenLogin }: RegisterMod
   );
 };
 
-
-// ---------------- HASH ROUTER HOOK ----------------
-// ---------------- HASH ROUTER HOOK ----------------
 const useHashRouter = () => {
   const normalizeHash = (hash: string) => {
     if (!hash) return "";
@@ -5179,8 +5169,7 @@ const App = () => {
                   trend: "Rising",
                   siteUrl: item.businessWebsite || "#",
                   logoUrl:
-                    item.businessLogo ||
-                    "https://placehold.co/100x100?text=No+Logo",
+                    item.logoUrl,
                   posts: [],
                   postCategories: ["All"],
                   products: products,
